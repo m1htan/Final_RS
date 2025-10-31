@@ -9,6 +9,7 @@ st.set_page_config(page_title="SkillGraph System", layout="wide")
 apply_custom_style()
 
 st.title("SkillGraph Recommender System")
+st.caption("Discover tailored job matches and courses designed around your strengths.")
 
 @st.cache_resource
 def init_model():
@@ -21,18 +22,23 @@ if "user_id" not in st.session_state:
 
 if not st.session_state.user_id:
     st.markdown("<h3 class='centered-text'>Login to your account</h3>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([0.3, 0.4, 0.3])
-    with col2:
-        user_id = st.text_input("User ID", placeholder="e.g. U0001")
-        login_button = st.button("Login")
+    st.markdown("""
+        <div class="empty-state">Enter your employee ID to see personalised insights.</div>
+    """, unsafe_allow_html=True)
 
-    if login_button:
+    col1, col2, col3 = st.columns([0.25, 0.5, 0.25])
+    with col2:
+        with st.form("login_form", clear_on_submit=False):
+            user_id = st.text_input("User ID", placeholder="e.g. U0001", max_chars=20)
+            submitted = st.form_submit_button("Login", use_container_width=True)
+
+    if submitted:
         if user_id and user_id in data["employee_df"]["user_id"].values:
             st.session_state.user_id = user_id
-            st.success(f"Welcome, {user_id}")
+            st.success(f"Welcome back, {user_id}! Redirecting...")
             st.rerun()
         else:
-            st.error("User ID not found. Please check again.")
+            st.error("We couldn't find that ID. Please check and try again.")
     st.stop()
 
 col1, col2 = st.columns([0.85, 0.15])
@@ -42,6 +48,9 @@ with col2:
         st.rerun()
 
 user_id = st.session_state.user_id
+st.markdown(f"### 👋 Hello, {user_id}!")
+st.info("Explore the tabs below to review your profile, discover matching roles, and close any skill gaps with curated courses.")
+
 tabs = st.tabs(["Profile", "Job Match", "Learning Path"])
 
 with tabs[0]:
@@ -54,6 +63,7 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("Top Matching Jobs")
+    st.markdown("<div id='job-match'></div>", unsafe_allow_html=True)
     jobs = top_jobs_for_user(data, user_id, n=5)
     if jobs is not None and not jobs.empty:
         show_job_cards(jobs)
@@ -62,6 +72,7 @@ with tabs[1]:
 
 with tabs[2]:
     st.subheader("Recommended Courses to Close Skill Gap")
+    st.markdown("<div id='learning-path'></div>", unsafe_allow_html=True)
     recs = recommend_for_user(data, user_id)
     if recs is not None and not recs.empty:
         show_course_cards(recs)
