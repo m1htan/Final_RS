@@ -63,22 +63,22 @@ _LEVEL_DETAILS = {
 
 
 def _render_skill_rows(user: dict) -> str:
+    """Render each skill row as single-line HTML (no newline, no indent)."""
     rows = []
     for name, raw_level in _pair_skills(user):
         details = _LEVEL_DETAILS.get(raw_level.strip().upper(), {"label": "Unknown", "score": 10})
-        rows.append(
-            f"""
-            <div class='skill-row'>
-                <div class='skill-info'>
-                    <span class='skill-name'>{name}</span>
-                    <span class='skill-level'>{details['label']}</span>
-                </div>
-                <div class='progress-track'>
-                    <div class='progress-bar' style='width:{details['score']}%'></div>
-                </div>
-            </div>
-            """
+        row = (
+            "<div class='skill-row'>"
+            "<div class='skill-info'>"
+            f"<span class='skill-name'>{name}</span>"
+            f"<span class='skill-level'>{details['label']}</span>"
+            "</div>"
+            "<div class='progress-track'>"
+            f"<div class='progress-bar' style='width:{details['score']}%'></div>"
+            "</div>"
+            "</div>"
         )
+        rows.append(row)
     return "".join(rows)
 
 
