@@ -83,8 +83,7 @@ def _render_skill_rows(user: dict) -> str:
 
 
 def show_profile_card(user: dict) -> None:
-    """Display the profile view, inspired by the design reference."""
-
+    """Display the profile view in Streamlit with real HTML rendering."""
     user_id = user.get("user_id", "")
     first_name = user.get("first_name", "")
     last_name = user.get("last_name", "")
@@ -96,6 +95,7 @@ def show_profile_card(user: dict) -> None:
     major = user.get("major", "-")
     city = user.get("city", "-")
 
+    # Render skill section
     skills_markup = _render_skill_rows(user)
     if not skills_markup:
         skills_markup = "<div class='empty-copy'>No skills registered yet.</div>"
@@ -103,130 +103,101 @@ def show_profile_card(user: dict) -> None:
     skill_pairs = _pair_skills(user)
     total_skills = len(skill_pairs)
     tracked_levels = [
-        _LEVEL_DETAILS.get(level.strip().upper(), {"score": 0}).get("score", 0)
+        _LEVEL_DETAILS.get(level.strip().upper(), {"score": 0})["score"]
         for _, level in skill_pairs
     ]
     avg_level = int(round(sum(tracked_levels) / total_skills)) if total_skills else 0
 
-    st.markdown(
-        f"""
-        <div class="profile-page">
-            <section class="card profile-header">
-                <div class="profile-avatar">
-                    {'<img src="' + image_data_uri + '" alt="Profile photo" />' if image_data_uri else f"<div class='avatar-fallback'>{initials}</div>"}
-                </div>
-                <div class="profile-summary">
-                    <h2>{full_name}</h2>
-                    <p class="profile-role">{major or 'Specialisation unavailable'}</p>
-                    <div class="profile-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">Employee ID</span>
-                            <span class="meta-value">{user_id or '—'}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Degree</span>
-                            <span class="meta-value">{degree or '—'}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">GPA</span>
-                            <span class="meta-value">{gpa or '—'}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Location</span>
-                            <span class="meta-value">{city or '—'}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="profile-actions">
-                    <button class="button ghost">View performance</button>
-                </div>
-            </section>
+    # HTML content (no indent)
+    html = f"""
+<div class="profile-page">
 
-            <section class="profile-highlights">
-                <div class="mini-card">
-                    <span class="mini-label">Skills tracked</span>
-                    <span class="mini-value">{total_skills}</span>
-                    <span class="mini-caption">Declared competencies</span>
-                </div>
-                <div class="mini-card">
-                    <span class="mini-label">Average proficiency</span>
-                    <span class="mini-value">{avg_level}%</span>
-                    <span class="mini-caption">Across registered skills</span>
-                </div>
-                <div class="mini-card">
-                    <span class="mini-label">Academic score</span>
-                    <span class="mini-value">{gpa or '—'}</span>
-                    <span class="mini-caption">Latest reported GPA</span>
-                </div>
-            </section>
-
-            <section class="card section-card">
-                <div class="section-header">
-                    <div>
-                        <h3>Employee overview</h3>
-                        <p class="section-description">Key background information pulled from the employee registry.</p>
-                    </div>
-                </div>
-                <div class="detail-grid">
-                    <div>
-                        <span class="detail-label">First name</span>
-                        <span class="detail-value">{first_name or '—'}</span>
-                    </div>
-                    <div>
-                        <span class="detail-label">Last name</span>
-                        <span class="detail-value">{last_name or '—'}</span>
-                    </div>
-                    <div>
-                        <span class="detail-label">Specialisation</span>
-                        <span class="detail-value">{major or '—'}</span>
-                    </div>
-                    <div>
-                        <span class="detail-label">Highest degree</span>
-                        <span class="detail-value">{degree or '—'}</span>
-                    </div>
-                    <div>
-                        <span class="detail-label">Current city</span>
-                        <span class="detail-value">{city or '—'}</span>
-                    </div>
-                    <div>
-                        <span class="detail-label">GPA</span>
-                        <span class="detail-value">{gpa or '—'}</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="card section-card">
-                <div class="section-header">
-                    <div>
-                        <h3>Skill proficiency</h3>
-                        <p class="section-description">Latest proficiency ratings for each declared skill.</p>
-                    </div>
-                </div>
-                <div class="skill-matrix">{skills_markup}</div>
-            </section>
-
-            <section class="card section-card">
-                <div class="section-header">
-                    <div>
-                        <h3>Development recommendations</h3>
-                        <p class="section-description">Explore tailored job matches and courses to continue professional growth.</p>
-                    </div>
-                </div>
-                <div class="detail-grid single-column">
-                    <div>
-                        <span class="detail-label">Job matches</span>
-                        <span class="detail-value">Review the <strong>Job Match</strong> tab for roles that align with this profile.</span>
-                    </div>
-                    <div>
-                        <span class="detail-label">Learning path</span>
-                        <span class="detail-value">Visit the <strong>Learning Path</strong> tab to identify courses that close remaining skill gaps.</span>
-                    </div>
-                </div>
-            </section>
+<section class="card profile-header">
+    <div class="profile-avatar">
+        {f'<img src="{image_data_uri}" alt="Profile photo" />' if image_data_uri else f"<div class='avatar-fallback'>{initials}</div>"}
+    </div>
+    <div class="profile-summary">
+        <h2>{full_name}</h2>
+        <p class="profile-role">{major or 'Specialisation unavailable'}</p>
+        <div class="profile-meta">
+            <div class="meta-item"><span class="meta-label">Employee ID</span><span class="meta-value">{user_id or '—'}</span></div>
+            <div class="meta-item"><span class="meta-label">Degree</span><span class="meta-value">{degree or '—'}</span></div>
+            <div class="meta-item"><span class="meta-label">GPA</span><span class="meta-value">{gpa or '—'}</span></div>
+            <div class="meta-item"><span class="meta-label">Location</span><span class="meta-value">{city or '—'}</span></div>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    </div>
+    <div class="profile-actions">
+        <button class="button ghost">View performance</button>
+    </div>
+</section>
+
+<section class="profile-highlights">
+    <div class="mini-card">
+        <span class="mini-label">Skills tracked</span>
+        <span class="mini-value">{total_skills}</span>
+        <span class="mini-caption">Declared competencies</span>
+    </div>
+    <div class="mini-card">
+        <span class="mini-label">Average proficiency</span>
+        <span class="mini-value">{avg_level}%</span>
+        <span class="mini-caption">Across registered skills</span>
+    </div>
+    <div class="mini-card">
+        <span class="mini-label">Academic score</span>
+        <span class="mini-value">{gpa or '—'}</span>
+        <span class="mini-caption">Latest reported GPA</span>
+    </div>
+</section>
+
+<section class="card section-card">
+    <div class="section-header">
+        <div>
+            <h3>Employee overview</h3>
+            <p class="section-description">Key background information pulled from the employee registry.</p>
+        </div>
+    </div>
+    <div class="detail-grid">
+        <div><span class="detail-label">First name</span><span class="detail-value">{first_name or '—'}</span></div>
+        <div><span class="detail-label">Last name</span><span class="detail-value">{last_name or '—'}</span></div>
+        <div><span class="detail-label">Specialisation</span><span class="detail-value">{major or '—'}</span></div>
+        <div><span class="detail-label">Highest degree</span><span class="detail-value">{degree or '—'}</span></div>
+        <div><span class="detail-label">Current city</span><span class="detail-value">{city or '—'}</span></div>
+        <div><span class="detail-label">GPA</span><span class="detail-value">{gpa or '—'}</span></div>
+    </div>
+</section>
+
+<section class="card section-card">
+    <div class="section-header">
+        <div>
+            <h3>Skill proficiency</h3>
+            <p class="section-description">Latest proficiency ratings for each declared skill.</p>
+        </div>
+    </div>
+    <div class="skill-matrix">{skills_markup}</div>
+</section>
+
+<section class="card section-card">
+    <div class="section-header">
+        <div>
+            <h3>Development recommendations</h3>
+            <p class="section-description">Explore tailored job matches and courses to continue professional growth.</p>
+        </div>
+    </div>
+    <div class="detail-grid single-column">
+        <div>
+            <span class="detail-label">Job matches</span>
+            <span class="detail-value">Review the <strong>Job Match</strong> tab for roles that align with this profile.</span>
+        </div>
+        <div>
+            <span class="detail-label">Learning path</span>
+            <span class="detail-value">Visit the <strong>Learning Path</strong> tab to identify courses that close remaining skill gaps.</span>
+        </div>
+    </div>
+</section>
+
+</div>
+"""
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def show_job_cards(jobs_df: pd.DataFrame) -> None:
