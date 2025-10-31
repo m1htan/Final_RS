@@ -63,6 +63,7 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("Top Matching Jobs")
+    st.markdown("<div id='job-match'></div>", unsafe_allow_html=True)
     jobs = top_jobs_for_user(data, user_id, n=5)
     if jobs is not None and not jobs.empty:
         show_job_cards(jobs)
@@ -71,6 +72,7 @@ with tabs[1]:
 
 with tabs[2]:
     st.subheader("Recommended Courses to Close Skill Gap")
+    st.markdown("<div id='learning-path'></div>", unsafe_allow_html=True)
     recs = recommend_for_user(data, user_id)
     if recs is not None and not recs.empty:
         show_course_cards(recs)
