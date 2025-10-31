@@ -237,7 +237,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> None:
         st.markdown(
             f"""
             <div class="card">
-                <h4>✨ Job match: {row.get('jid', 'Unknown')}</h4>
+                <h4>Job match: {row.get('jid', 'Unknown')}</h4>
                 <p>These are the core skills that align with you:</p>
                 <div class="tag-list">{skills or '<span class="pill">Skills unavailable</span>'}</div>
                 <div class="card-footer">

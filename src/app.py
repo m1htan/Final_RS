@@ -48,7 +48,7 @@ with col2:
         st.rerun()
 
 user_id = st.session_state.user_id
-st.markdown(f"### 👋 Hello, {user_id}!")
+st.markdown(f"### Hello, {user_id}!")
 st.info("Explore the tabs below to review your profile, discover matching roles, and close any skill gaps with curated courses.")
 
 tabs = st.tabs(["Profile", "Job Match", "Learning Path"])
