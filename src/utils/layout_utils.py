@@ -208,26 +208,18 @@ def show_profile_card(user: dict) -> None:
             <section class="card section-card">
                 <div class="section-header">
                     <div>
-                        <h3>Next best actions</h3>
-                        <p class="section-description">Bridge the gap between current skills and future opportunities with these personalised steps.</p>
+                        <h3>Development recommendations</h3>
+                        <p class="section-description">Explore tailored job matches and courses to continue professional growth.</p>
                     </div>
                 </div>
-                <div class="action-grid">
-                    <div class="action-card job-action">
-                        <div class="action-icon">💼</div>
-                        <div class="action-content">
-                            <h4>Review job matches</h4>
-                            <p>Head to the <strong>Job Match</strong> tab to explore tailored roles, compare fit scores, and shortlist your next move.</p>
-                        </div>
-                        <a class="action-link" href="#job-match">Open tab</a>
+                <div class="detail-grid single-column">
+                    <div>
+                        <span class="detail-label">Job matches</span>
+                        <span class="detail-value">Review the <strong>Job Match</strong> tab for roles that align with this profile.</span>
                     </div>
-                    <div class="action-card learning-action">
-                        <div class="action-icon">🎓</div>
-                        <div class="action-content">
-                            <h4>Strengthen your skills</h4>
-                            <p>Browse the <strong>Learning Path</strong> tab to find curated courses that close remaining gaps and boost your readiness.</p>
-                        </div>
-                        <a class="action-link" href="#learning-path">Open tab</a>
+                    <div>
+                        <span class="detail-label">Learning path</span>
+                        <span class="detail-value">Visit the <strong>Learning Path</strong> tab to identify courses that close remaining skill gaps.</span>
                     </div>
                 </div>
             </section>
