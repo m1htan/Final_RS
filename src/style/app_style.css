@@ -1,0 +1,39 @@
+/* Center login text */
+.centered-text {
+    text-align: center;
+    margin-top: 40px;
+    color: #222;
+}
+
+/* General app styling */
+.main > div {
+    padding: 20px 40px;
+}
+
+/* Adjust tab layout */
+.stTabs [data-baseweb="tab-list"] {
+    justify-content: center;
+}
+
+/* Tables and dataframe style */
+.stDataFrame {
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+/* Buttons */
+button[kind="primary"] {
+    border-radius: 6px;
+}
+
+/* Logout button */
+button[data-testid="baseButton-secondary"] {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    color: #333;
+}
+
+/* Card style placeholders */
+div[data-testid="stMetricValue"] {
+    font-size: 18px !important;
+}

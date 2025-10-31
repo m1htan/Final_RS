@@ -1,0 +1,29 @@
+,,,,
+,Cột,Loại dữ liệu,Mô tả,Ví dụ
+,user_id,string,Mã định danh duy nhất của người dùng/nhân viên.,U001
+,first_name,string,Tên của người dùng.,Minh
+,last_name,string,Họ của người dùng.,Nguyen
+,email,string,Email liên hệ của người dùng.,minh.nguyen@company.com
+,gender,"enum(Male, Female)",Giới tính.,Male
+,city,string,Thành phố nơi người dùng sinh sống/làm việc.,Ho Chi Minh
+,major,string,Chuyên ngành học.,Information Systems
+,degree_type,"enum(Bachelor, Master)",Trình độ học vấn cao nhất.,Bachelor
+,gpa,float,Điểm trung bình học tập (0.0 – 4.0).,3.5
+,skill_name,string,Tên kỹ năng mà người dùng có.,Python Programming
+,skill_level,enum(L0–L4),Mức độ thành thạo kỹ năng (L0: mới học – L4: chuyên gia).,L3
+,comp_name,string,Tên công ty mà người dùng từng làm việc.,FPT Software
+,position,string,Chức vụ hoặc vai trò trong công ty đó.,Data Analyst
+,technology,string,Công nghệ hoặc nền tảng đã sử dụng.,"SQL, Power BI"
+,tools,string,Công cụ hỗ trợ công việc.,"Excel, Jupyter Notebook"
+,proj_name,string,Tên dự án đã tham gia.,Sales Dashboard Optimization
+,responsible,text,Mô tả nhiệm vụ chính trong dự án.,Data cleaning and KPI visualization
+,jid,string,Mã định danh công việc (job ID).,J057
+,title,string,Tên công việc hoặc vị trí cần tuyển.,Data Scientist
+,location,string,Nơi làm việc của job đó.,Hanoi
+,proj_quals,text,Yêu cầu kỹ năng/chuyên môn cho job.,"Requires Python, SQL, ML fundamentals"
+,job_desc,text,Mô tả công việc chi tiết.,Build predictive models and analyze data trends
+,start_date,date,Ngày bắt đầu đăng tuyển hoặc bắt đầu job.,2025-05-01
+,end_date,date,Ngày kết thúc đăng tuyển hoặc dự án.,2025-06-30
+,appl_id,string,Mã định danh của đơn ứng tuyển.,A102
+,status,"enum(Submitted, Interview, Approved, Declined)",Trạng thái hiện tại của đơn ứng tuyển.,Interview
+,applied_date,date,Ngày người dùng ứng tuyển vào job.,2025-05-12
