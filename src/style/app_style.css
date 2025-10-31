@@ -1,39 +1,129 @@
-/* Center login text */
-.centered-text {
-    text-align: center;
-    margin-top: 40px;
+/* Global layout */
+body {
+    font-family: "Inter", "Segoe UI", sans-serif;
+    background: #f4f7fb;
     color: #222;
 }
 
-/* General app styling */
 .main > div {
-    padding: 20px 40px;
+    padding: 24px 48px;
 }
 
-/* Adjust tab layout */
+.centered-text {
+    text-align: center;
+    margin-top: 32px;
+    color: #1b2a4b;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab"] {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 24px;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    color: #1b6ac9;
+}
+
 .stTabs [data-baseweb="tab-list"] {
     justify-content: center;
-}
-
-/* Tables and dataframe style */
-.stDataFrame {
-    border-radius: 10px;
-    border: 1px solid #ddd;
+    gap: 12px;
 }
 
 /* Buttons */
-button[kind="primary"] {
-    border-radius: 6px;
+button[kind="primary"],
+div.stButton > button {
+    border-radius: 999px;
+    background: linear-gradient(135deg, #1b6ac9, #3fa6ff);
+    color: #fff;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    border: none;
+    box-shadow: 0 8px 16px rgba(27, 106, 201, 0.25);
 }
 
-/* Logout button */
+div.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(27, 106, 201, 0.3);
+}
+
 button[data-testid="baseButton-secondary"] {
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
-    color: #333;
+    border-radius: 999px;
+    border: 1px solid #cfd8e3;
+    background: #fff;
+    color: #1b2a4b;
+    font-weight: 600;
+    padding: 0.5rem 1.4rem;
 }
 
-/* Card style placeholders */
-div[data-testid="stMetricValue"] {
-    font-size: 18px !important;
+/* Card components */
+.card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 14px 28px rgba(31, 53, 86, 0.08);
+    border: 1px solid rgba(219, 226, 239, 0.6);
+}
+
+.card h4 {
+    margin-bottom: 8px;
+    font-size: 20px;
+    color: #0f172a;
+}
+
+.card p {
+    margin-bottom: 6px;
+    line-height: 1.5;
+}
+
+.profile-card {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.profile-card img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 24px;
+    box-shadow: 0 10px 20px rgba(31, 53, 86, 0.15);
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(27, 106, 201, 0.12);
+    color: #1b6ac9;
+    border-radius: 999px;
+    padding: 4px 12px;
+    margin: 4px 6px 4px 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.card-footer {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.card-footer span {
+    font-weight: 600;
+    color: #475569;
+}
+
+.empty-state {
+    text-align: center;
+    color: #475569;
+    padding: 32px;
 }
