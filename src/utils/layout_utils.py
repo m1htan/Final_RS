@@ -111,7 +111,7 @@ def show_profile_card(user: dict) -> None:
     st.markdown(
         f"""
         <div class="profile-page">
-            <div class="card profile-header">
+            <section class="card profile-header">
                 <div class="profile-avatar">
                     {'<img src="' + image_data_uri + '" alt="Profile photo" />' if image_data_uri else f"<div class='avatar-fallback'>{initials}</div>"}
                 </div>
@@ -140,9 +140,9 @@ def show_profile_card(user: dict) -> None:
                 <div class="profile-actions">
                     <button class="button ghost">View performance</button>
                 </div>
-            </div>
+            </section>
 
-            <div class="profile-highlights">
+            <section class="profile-highlights">
                 <div class="mini-card">
                     <span class="mini-label">Skills tracked</span>
                     <span class="mini-value">{total_skills}</span>
@@ -158,9 +158,9 @@ def show_profile_card(user: dict) -> None:
                     <span class="mini-value">{gpa or '—'}</span>
                     <span class="mini-caption">Latest reported GPA</span>
                 </div>
-            </div>
+            </section>
 
-            <div class="card section-card">
+            <section class="card section-card">
                 <div class="section-header">
                     <div>
                         <h3>Employee overview</h3>
@@ -193,9 +193,9 @@ def show_profile_card(user: dict) -> None:
                         <span class="detail-value">{gpa or '—'}</span>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="card section-card">
+            <section class="card section-card">
                 <div class="section-header">
                     <div>
                         <h3>Skill proficiency</h3>
@@ -203,34 +203,26 @@ def show_profile_card(user: dict) -> None:
                     </div>
                 </div>
                 <div class="skill-matrix">{skills_markup}</div>
-            </div>
+            </section>
 
-            <div class="card section-card">
+            <section class="card section-card">
                 <div class="section-header">
                     <div>
-                        <h3>Next best actions</h3>
-                        <p class="section-description">Bridge the gap between current skills and future opportunities with these personalised steps.</p>
+                        <h3>Development recommendations</h3>
+                        <p class="section-description">Explore tailored job matches and courses to continue professional growth.</p>
                     </div>
                 </div>
-                <div class="action-grid">
-                    <div class="action-card job-action">
-                        <div class="action-icon">💼</div>
-                        <div class="action-content">
-                            <h4>Review job matches</h4>
-                            <p>Head to the <strong>Job Match</strong> tab to explore tailored roles, compare fit scores, and shortlist your next move.</p>
-                        </div>
-                        <a class="action-link" href="#job-match">Open tab</a>
+                <div class="detail-grid single-column">
+                    <div>
+                        <span class="detail-label">Job matches</span>
+                        <span class="detail-value">Review the <strong>Job Match</strong> tab for roles that align with this profile.</span>
                     </div>
-                    <div class="action-card learning-action">
-                        <div class="action-icon">🎓</div>
-                        <div class="action-content">
-                            <h4>Strengthen your skills</h4>
-                            <p>Browse the <strong>Learning Path</strong> tab to find curated courses that close remaining gaps and boost your readiness.</p>
-                        </div>
-                        <a class="action-link" href="#learning-path">Open tab</a>
+                    <div>
+                        <span class="detail-label">Learning path</span>
+                        <span class="detail-value">Visit the <strong>Learning Path</strong> tab to identify courses that close remaining skill gaps.</span>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
         """,
         unsafe_allow_html=True,
