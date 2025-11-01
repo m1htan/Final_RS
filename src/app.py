@@ -1,6 +1,11 @@
 import streamlit as st
 from utils.recommender import load_model, get_user_info, top_jobs_for_user, recommend_for_user
-from utils.layout_utils import show_profile_card, show_job_cards, show_course_cards
+from utils.layout_utils import (
+    show_course_cards,
+    show_job_cards,
+    show_job_detail,
+    show_profile_card,
+)
 from style.layout_style import apply_custom_style
 
 st.set_page_config(page_title="SkillGraph System", layout="wide")
@@ -134,7 +139,33 @@ with tabs[1]:
             """,
             unsafe_allow_html=True,
         )
-        show_job_cards(jobs)
+
+        list_col, detail_col = st.columns([0.55, 0.45])
+
+        with list_col:
+            selected_job_id = show_job_cards(jobs)
+
+        with detail_col:
+            selected_row = None
+            resolved_id = str(selected_job_id) if selected_job_id is not None else None
+            if resolved_id:
+                for key in ("jid", "job_id", "id"):
+                    if key in jobs.columns:
+                        matches = jobs[jobs[key].astype(str) == resolved_id]
+                        if not matches.empty:
+                            selected_row = matches.iloc[0]
+                            break
+            if selected_row is None and not jobs.empty:
+                selected_row = jobs.iloc[0]
+                fallback_id = (
+                    selected_row.get("jid")
+                    or selected_row.get("job_id")
+                    or selected_row.get("id")
+                    or 0
+                )
+                st.session_state["selected_job_id"] = str(fallback_id)
+
+            show_job_detail(selected_row)
     else:
         st.info("No job match data available for this user.")
 

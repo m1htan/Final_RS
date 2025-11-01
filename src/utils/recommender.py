@@ -42,6 +42,9 @@ def top_jobs_for_user(data, user_id, n=5):
             "salary",
             "experience_level",
             "level",
+            "job_desc",
+            "start_date",
+            "end_date",
         ]
         job_columns = ["jid"] + [col for col in optional_columns if col in job_df.columns]
         job_details = job_df[job_columns].drop_duplicates(subset=["jid"])
@@ -73,6 +76,9 @@ def top_jobs_for_user(data, user_id, n=5):
         "salary",
         "experience_level",
         "level",
+        "job_desc",
+        "start_date",
+        "end_date",
         "score",
     ]
     available_columns = [col for col in desired_order if col in subset.columns]
