@@ -34,15 +34,40 @@
         Streamlit.setComponentValue(payload);
     }
 
+    function resolveAnchor(target) {
+        if (!target) {
+            return null;
+        }
+
+        let element = target;
+        if (element.nodeType === Node.TEXT_NODE) {
+            element = element.parentElement;
+        }
+
+        if (!element) {
+            return null;
+        }
+
+        if (typeof element.closest === 'function') {
+            return element.closest('a.job-card-link');
+        }
+
+        while (element) {
+            if (element.tagName && element.tagName.toLowerCase() === 'a' && element.classList && element.classList.contains('job-card-link')) {
+                return element;
+            }
+            element = element.parentElement;
+        }
+
+        return null;
+    }
+
     function handleDocumentClick(event) {
         if (!event) {
             return;
         }
-        const target = event.target;
-        if (!target) {
-            return;
-        }
-        const anchor = target.closest ? target.closest('a.job-card-link') : null;
+
+        const anchor = resolveAnchor(event.target);
         if (!anchor) {
             return;
         }
