@@ -3,11 +3,11 @@ import re
 from html import escape
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
-from urllib.parse import urlencode
 from textwrap import dedent
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -223,18 +223,6 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         selected_job_id = _job_identifier(first_row, 0)
         st.session_state["selected_job_id"] = selected_job_id
 
-    base_params = st.experimental_get_query_params()
-
-    def _detail_link(job_id: str) -> str:
-        params = {k: list(v) for k, v in base_params.items() if k not in {"job_id", "view"}}
-        params["job_id"] = [job_id]
-        params["view"] = ["detail"]
-        query_mapping = {
-            key: [str(item) for item in value] if isinstance(value, list) else str(value)
-            for key, value in params.items()
-        }
-        return f"?{urlencode(query_mapping, doseq=True)}"
-
     for index, row in jobs_df.iterrows():
         job_id = _job_identifier(row, index)
         is_active = selected_job_id == job_id
@@ -305,7 +293,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <div class="job-card-content">
                     <div class="job-card-header">
                         <div class="job-card-title">
-                            <a class="job-card-link" href="{_detail_link(job_id)}" target="_self">{job_title}</a>
+                            <a class="job-card-link" href="#" data-job-id="{escape(job_id)}" role="link">{job_title}</a>
                         </div>
                         <span class="match-chip">{match_label}</span>
                     </div>
@@ -322,6 +310,53 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         ).strip()
 
         st.markdown(card_html, unsafe_allow_html=True)
+
+    selection = components.html(
+        """
+        <script>
+        const Streamlit = window.parent.Streamlit || window.Streamlit;
+        const doc = window.parent.document;
+
+        function wireJobLinks() {
+            const links = doc.querySelectorAll('a.job-card-link[data-job-id]');
+            links.forEach((link) => {
+                if (link.dataset.listenerAttached === 'true') {
+                    return;
+                }
+                link.dataset.listenerAttached = 'true';
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const jobId = link.getAttribute('data-job-id');
+                    if (Streamlit && jobId) {
+                        Streamlit.setComponentValue(jobId);
+                    }
+                });
+            });
+        }
+
+        wireJobLinks();
+
+        const observer = new MutationObserver(() => {
+            wireJobLinks();
+        });
+        observer.observe(doc.body, { childList: true, subtree: true });
+
+        if (Streamlit && Streamlit.setComponentReady) {
+            Streamlit.setComponentReady();
+        }
+        if (Streamlit && Streamlit.setFrameHeight) {
+            Streamlit.setFrameHeight(0);
+        }
+        </script>
+        """,
+        height=0,
+        scrolling=False,
+        key="job-card-link-listener",
+    )
+
+    if selection:
+        st.session_state["selected_job_id"] = str(selection)
+        st.session_state["job_detail_mode"] = True
 
     return st.session_state.get("selected_job_id")
 
