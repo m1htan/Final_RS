@@ -206,7 +206,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> None:
     cards: List[str] = []
     for _, row in jobs_df.iterrows():
         skills = _render_tags(_safe_split(row.get("proj_quals", "")))
-        job_title = row.get("job_title") or row.get("jid") or "Untitled role"
+        job_title = row.get("title") or row.get("jid") or "Untitled role"
         company = row.get("company") or "Unknown company"
         location = row.get("location") or "Location not specified"
         employment_type = row.get("employment_type") or row.get("job_type") or "Full-time"
