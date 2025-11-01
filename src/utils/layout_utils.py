@@ -574,7 +574,7 @@ def show_course_cards(recs_df: pd.DataFrame) -> None:
                 <h4>{course.get('course_name', 'Untitled course')}</h4>
                 <p><strong>Provider:</strong> {course.get('provider', 'N/A')}</p>
                 <p><strong>Duration:</strong> {course.get('duration_hours', 'N/A')} hours</p>
-                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} ⭐</p>
+                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} / 5</p>
                 <p>You'll sharpen these skills:</p>
                 <div class="tag-list">{taught or '<span class="pill">Skills unavailable</span>'}</div>
                 <div class="card-footer">
