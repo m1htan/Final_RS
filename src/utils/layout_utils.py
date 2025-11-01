@@ -351,7 +351,6 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         """,
         height=0,
         scrolling=False,
-        key="job-card-link-listener",
     )
 
     if selection:
