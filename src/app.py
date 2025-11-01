@@ -98,7 +98,7 @@ with tabs[1]:
                 <div class="filter-field wide">
                     <label>Search</label>
                     <div class="input-shell">
-                        <span class="input-icon">🔍</span>
+                        <span class="input-icon"></span>
                         <input type="text" placeholder="Search job title or keyword" />
                     </div>
                 </div>
