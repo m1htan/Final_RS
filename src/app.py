@@ -1,6 +1,11 @@
 import streamlit as st
 from utils.recommender import load_model, get_user_info, top_jobs_for_user, recommend_for_user
-from utils.layout_utils import show_profile_card, show_job_cards, show_course_cards
+from utils.layout_utils import (
+    show_course_cards,
+    show_job_cards,
+    show_job_detail,
+    show_profile_card,
+)
 from style.layout_style import apply_custom_style
 
 st.set_page_config(page_title="SkillGraph System", layout="wide")
@@ -19,6 +24,24 @@ data = init_model()
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
+
+if "job_detail_mode" not in st.session_state:
+    st.session_state.job_detail_mode = False
+
+if "selected_job_id" not in st.session_state:
+    st.session_state.selected_job_id = None
+
+query_params = st.experimental_get_query_params()
+requested_job = query_params.get("job_id", [None])
+requested_job = requested_job[0] if requested_job else None
+requested_view = query_params.get("view", [None])
+requested_view = requested_view[0] if requested_view else None
+
+if requested_job:
+    st.session_state.selected_job_id = requested_job
+    st.session_state.job_detail_mode = True
+elif requested_view == "list":
+    st.session_state.job_detail_mode = False
 
 if not st.session_state.user_id:
     st.markdown("<h3 class='centered-text'>Login to your account</h3>", unsafe_allow_html=True)
@@ -62,11 +85,134 @@ with tabs[0]:
         st.warning("User not found in dataset.")
 
 with tabs[1]:
-    st.subheader("Top Matching Jobs")
-    st.markdown("<div id='job-match'></div>", unsafe_allow_html=True)
-    jobs = top_jobs_for_user(data, user_id, n=5)
+    st.markdown(
+        """
+        <section class="job-match-hero" id="job-match">
+            <div class="job-hero-copy">
+                <h2>Find Job</h2>
+                <p>Discover curated opportunities that align with your strengths and aspirations.</p>
+            </div>
+            <div class="job-filter-bar">
+                <div class="filter-field wide">
+                    <label>Search</label>
+                    <div class="input-shell">
+                        <span class="input-icon">🔍</span>
+                        <input type="text" placeholder="Search job title or keyword" />
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Location</label>
+                    <div class="input-shell">
+                        <select>
+                            <option selected>All locations</option>
+                            <option>Remote</option>
+                            <option>On-site</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Job type</label>
+                    <div class="input-shell">
+                        <select>
+                            <option selected>Any type</option>
+                            <option>Full-time</option>
+                            <option>Part-time</option>
+                            <option>Contract</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Salary range</label>
+                    <div class="input-shell">
+                        <select>
+                            <option selected>All ranges</option>
+                            <option>Up to $60k</option>
+                            <option>$60k - $90k</option>
+                            <option>$90k - $120k</option>
+                            <option>$120k+</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="filter-button">Search</button>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    jobs = top_jobs_for_user(data, user_id, n=6)
     if jobs is not None and not jobs.empty:
-        show_job_cards(jobs)
+        job_detail_mode = st.session_state.get("job_detail_mode", False)
+        if not job_detail_mode:
+            st.markdown(
+                f"""
+                <div class="job-results-header">
+                    <div>
+                        <h3>Job match</h3>
+                        <p>Based on your profile data</p>
+                    </div>
+                    <span class="results-count">{len(jobs)} roles available</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            show_job_cards(jobs)
+        else:
+            selected_job_id = st.session_state.get("selected_job_id")
+            selected_row = None
+            resolved_id = str(selected_job_id) if selected_job_id is not None else None
+            if resolved_id:
+                for key in ("jid", "job_id", "id"):
+                    if key in jobs.columns:
+                        matches = jobs[jobs[key].astype(str) == resolved_id]
+                        if not matches.empty:
+                            selected_row = matches.iloc[0]
+                            break
+            if selected_row is None and not jobs.empty:
+                selected_row = jobs.iloc[0]
+                fallback_id = (
+                    selected_row.get("jid")
+                    or selected_row.get("job_id")
+                    or selected_row.get("id")
+                    or 0
+                )
+                st.session_state["selected_job_id"] = str(fallback_id)
+
+            if resolved_id:
+                existing_params = st.experimental_get_query_params()
+                existing_job = existing_params.get("job_id", [None])
+                existing_job = existing_job[0] if existing_job else None
+                existing_view = existing_params.get("view", [None])
+                existing_view = existing_view[0] if existing_view else None
+                if existing_job != resolved_id or existing_view != "detail":
+                    new_params = {
+                        key: value
+                        for key, value in existing_params.items()
+                        if key not in {"job_id", "view"}
+                    }
+                    new_params["job_id"] = resolved_id
+                    new_params["view"] = "detail"
+                    st.experimental_set_query_params(
+                        **{
+                            key: value if isinstance(value, list) else [value]
+                            for key, value in new_params.items()
+                        }
+                    )
+
+            back_col, _ = st.columns([0.2, 0.8])
+            with back_col:
+                if st.button("← Back to job list", use_container_width=True):
+                    st.session_state["job_detail_mode"] = False
+                    cleaned = {
+                        key: value
+                        for key, value in st.experimental_get_query_params().items()
+                        if key not in {"job_id", "view"}
+                    }
+                    st.experimental_set_query_params(**{k: v for k, v in cleaned.items()}, view="list")
+                    st.rerun()
+
+            show_job_detail(selected_row)
     else:
         st.info("No job match data available for this user.")
 
