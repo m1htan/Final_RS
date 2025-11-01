@@ -28,6 +28,9 @@ if "user_id" not in st.session_state:
 if "job_detail_mode" not in st.session_state:
     st.session_state.job_detail_mode = False
 
+if "job_match_view" not in st.session_state:
+    st.session_state.job_match_view = "list"
+
 if "selected_job_id" not in st.session_state:
     st.session_state.selected_job_id = None
 
@@ -52,6 +55,7 @@ if not st.session_state.user_id:
             st.session_state.job_detail_mode = False
             st.session_state.selected_job_id = None
             st.session_state.job_click_nonce = None
+            st.session_state.job_match_view = "list"
             st.success(f"Welcome back, {user_id}! Redirecting...")
             st.rerun()
         else:
@@ -65,6 +69,7 @@ with col2:
         st.session_state.job_detail_mode = False
         st.session_state.selected_job_id = None
         st.session_state.job_click_nonce = None
+        st.session_state.job_match_view = "list"
         st.rerun()
 
 user_id = st.session_state.user_id
@@ -139,11 +144,17 @@ with tabs[1]:
 
     jobs = top_jobs_for_user(data, user_id, n=6)
     if jobs is not None and not jobs.empty:
-        if st.session_state.get("job_detail_mode") and not st.session_state.get("selected_job_id"):
-            st.session_state.job_detail_mode = False
+        current_view = st.session_state.get("job_match_view", "list")
+        if current_view not in {"list", "detail"}:
+            current_view = "list"
+        if current_view == "detail" and not st.session_state.get("selected_job_id"):
+            current_view = "list"
+            st.session_state.selected_job_id = None
 
-        job_detail_mode = st.session_state.get("job_detail_mode", False)
-        if not job_detail_mode:
+        st.session_state.job_match_view = current_view
+        st.session_state.job_detail_mode = current_view == "detail"
+
+        if current_view == "list":
             st.markdown(
                 f"""
                 <div class="job-results-header">
@@ -158,7 +169,8 @@ with tabs[1]:
             )
 
             show_job_cards(jobs)
-            if st.session_state.get("job_detail_mode", False):
+            if st.session_state.get("job_match_view") == "detail":
+                st.session_state.job_detail_mode = True
                 st.rerun()
         else:
             selected_job_id = st.session_state.get("selected_job_id")
@@ -186,10 +198,13 @@ with tabs[1]:
                 if st.button("← Back to job list", use_container_width=True):
                     st.session_state["job_detail_mode"] = False
                     st.session_state["selected_job_id"] = None
+                    st.session_state["job_match_view"] = "list"
                     st.rerun()
 
             show_job_detail(selected_row)
     else:
+        st.session_state.job_detail_mode = False
+        st.session_state.job_match_view = "list"
         st.info("No job match data available for this user.")
 
 with tabs[2]:

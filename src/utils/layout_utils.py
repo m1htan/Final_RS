@@ -377,9 +377,11 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 st.session_state["job_click_nonce"] = nonce
                 st.session_state["selected_job_id"] = job_id
                 st.session_state["job_detail_mode"] = True
+                st.session_state["job_match_view"] = "detail"
             elif not nonce and job_id != st.session_state.get("selected_job_id"):
                 st.session_state["selected_job_id"] = job_id
                 st.session_state["job_detail_mode"] = True
+                st.session_state["job_match_view"] = "detail"
 
     return st.session_state.get("selected_job_id")
 
