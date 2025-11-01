@@ -10,20 +10,36 @@
 <body>
 <script>
 (function() {
-    const Streamlit = window.parent.Streamlit || window.Streamlit;
     const NONCE_PREFIX = `job-link-${Date.now()}`;
     let counter = 0;
 
+    function getStreamlit() {
+        if (window.parent && window.parent.Streamlit) {
+            return window.parent.Streamlit;
+        }
+        if (window.Streamlit) {
+            return window.Streamlit;
+        }
+        return null;
+    }
+
     function notifyReady() {
-        if (Streamlit && Streamlit.setComponentReady) {
+        const Streamlit = getStreamlit();
+        if (!Streamlit) {
+            window.setTimeout(notifyReady, 50);
+            return;
+        }
+
+        if (Streamlit.setComponentReady) {
             Streamlit.setComponentReady();
         }
-        if (Streamlit && Streamlit.setFrameHeight) {
+        if (Streamlit.setFrameHeight) {
             Streamlit.setFrameHeight(0);
         }
     }
 
     function emitSelection(jobId) {
+        const Streamlit = getStreamlit();
         if (!jobId || !Streamlit || !Streamlit.setComponentValue) {
             return;
         }

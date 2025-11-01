@@ -319,7 +319,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
 
         st.markdown(card_html, unsafe_allow_html=True)
 
-    selection = job_link_listener(default=None)
+    selection = job_link_listener(default=None, key="job-link-listener")
 
     if selection:
         job_id = None
