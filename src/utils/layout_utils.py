@@ -4,6 +4,7 @@ from html import escape
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 from urllib.parse import urlencode
+from textwrap import dedent
 
 import pandas as pd
 import streamlit as st
@@ -284,7 +285,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         if is_active:
             card_classes += " is-active"
 
-        highlights = (
+        highlights = dedent(
             f"""
             <div class='job-card-highlights'>
                 <span class='pill soft'>{employment_type}</span>
@@ -293,30 +294,32 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <span class='pill muted'>{posted}</span>
             </div>
             """
-        )
+        ).strip()
 
-        card_html = f"""
-        <article class="{card_classes}">
-            <div class="job-card-leading">
-                <div class="job-card-badge" aria-hidden="true">{escape(initials)}</div>
-            </div>
-            <div class="job-card-content">
-                <div class="job-card-header">
-                    <div class="job-card-title">
-                        <a class="job-card-link" href="{_detail_link(job_id)}">{job_title}</a>
+        card_html = dedent(
+            f"""
+            <article class="{card_classes}">
+                <div class="job-card-leading">
+                    <div class="job-card-badge" aria-hidden="true">{escape(initials)}</div>
+                </div>
+                <div class="job-card-content">
+                    <div class="job-card-header">
+                        <div class="job-card-title">
+                            <a class="job-card-link" href="{_detail_link(job_id)}">{job_title}</a>
+                        </div>
+                        <span class="match-chip">{match_label}</span>
                     </div>
-                    <span class="match-chip">{match_label}</span>
+                    <div class="job-card-meta">
+                        <span>{company}</span>
+                        <span class="dot"></span>
+                        <span>{location}</span>
+                    </div>
+                    {highlights}
+                    <div class="job-card-skills" aria-label="Key skills">{skills}</div>
                 </div>
-                <div class="job-card-meta">
-                    <span>{company}</span>
-                    <span class="dot"></span>
-                    <span>{location}</span>
-                </div>
-                {highlights}
-                <div class="job-card-skills" aria-label="Key skills">{skills}</div>
-            </div>
-        </article>
-        """
+            </article>
+            """
+        ).strip()
 
         st.markdown(card_html, unsafe_allow_html=True)
 
