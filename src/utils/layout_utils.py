@@ -1,4 +1,6 @@
 import base64
+import re
+from html import escape
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
@@ -11,7 +13,7 @@ IMAGES_DIR = REPO_ROOT / "images"
 
 
 def _render_tags(items: Iterable[str]) -> str:
-    tags = [f"<span class='pill'>{item.strip()}</span>" for item in items if item and item.strip()]
+    tags = [f"<span class='pill'>{escape(item.strip())}</span>" for item in items if item and item.strip()]
     return "".join(tags)
 
 
@@ -200,24 +202,290 @@ def show_profile_card(user: dict) -> None:
     st.markdown(html, unsafe_allow_html=True)
 
 
-def show_job_cards(jobs_df: pd.DataFrame) -> None:
-    """Render job recommendations as friendly cards."""
+def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
+    """Render job recommendations as modern cards with clickable titles."""
 
-    for _, row in jobs_df.iterrows():
+    def _job_identifier(row: pd.Series, fallback: int) -> str:
+        for key in ("jid", "job_id", "id"):
+            if key in row and pd.notna(row[key]):
+                value = str(row[key]).strip()
+                if value:
+                    return value
+        return str(fallback)
+
+    selected_job_id = st.session_state.get("selected_job_id")
+    selected_job_id = str(selected_job_id) if selected_job_id is not None else None
+
+    if selected_job_id is None and not jobs_df.empty:
+        first_row = jobs_df.iloc[0]
+        selected_job_id = _job_identifier(first_row, 0)
+        st.session_state["selected_job_id"] = selected_job_id
+
+    for index, row in jobs_df.iterrows():
+        job_id = _job_identifier(row, index)
+        is_active = selected_job_id == job_id
+
         skills = _render_tags(_safe_split(row.get("proj_quals", "")))
-        st.markdown(
-            f"""
-            <div class="card">
-                <h4>Job match: {row.get('jid', 'Unknown')}</h4>
-                <p>These are the core skills that align with you:</p>
-                <div class="tag-list">{skills or '<span class="pill">Skills unavailable</span>'}</div>
-                <div class="card-footer">
-                    <span>Recommended based on your profile</span>
+        raw_job_title = (
+            row.get("job_title")
+            or row.get("title")
+            or row.get("jid")
+            or "Untitled role"
+        )
+        raw_company = str(row.get("company") or "Unknown company")
+        company = escape(raw_company)
+        location = escape(str(row.get("location") or "Location not specified"))
+        employment_type = escape(
+            str(row.get("employment_type") or row.get("job_type") or "Full-time")
+        )
+        salary = escape(str(row.get("salary_range") or row.get("salary") or "Salary not disclosed"))
+        experience = escape(str(row.get("experience_level") or row.get("level") or "All levels"))
+
+        score = row.get("score")
+        if pd.notna(score):
+            try:
+                score_value = float(score) * 100 if float(score) <= 1 else float(score)
+            except (TypeError, ValueError):
+                score_value = None
+        else:
+            score_value = None
+
+        initials_source = row.get("company") or raw_job_title
+        initials = str(initials_source)[:1].upper() if initials_source and str(initials_source).strip() else "J"
+        skills_markup = skills or "<span class='pill'>Skills unavailable</span>"
+
+        card_classes = "job-card"
+        if is_active:
+            card_classes += " is-active"
+
+        with st.container():
+            st.markdown(f"<article class='{card_classes}'>", unsafe_allow_html=True)
+            button_key = f"job_select_{job_id}_{index}"
+            clicked = st.button(
+                str(raw_job_title),
+                key=button_key,
+                use_container_width=True,
+            )
+            if clicked:
+                selected_job_id = job_id
+                st.session_state["selected_job_id"] = job_id
+                st.session_state["job_detail_mode"] = True
+                st.rerun()
+
+            st.markdown(
+                f"""
+                <div class="job-card-header">
+                    <div class="job-card-avatar">{escape(initials)}</div>
+                    <div class="job-card-summary">
+                        <div class="job-meta">
+                            <span>{company}</span>
+                            <span class="dot"></span>
+                            <span>{location}</span>
+                        </div>
+                    </div>
+                    <div class="job-score">
+                        <span class="score-label">Match score</span>
+                        <span class="score-value">{f'{score_value:.0f}%' if score_value is not None else '—'}</span>
+                    </div>
                 </div>
-            </div>
-            """,
+                <div class="job-tags" aria-label="Key skills">{skills_markup}</div>
+                <div class="job-card-footer">
+                    <div class="job-attribute">
+                        <span class="attr-label">Type</span>
+                        <span class="attr-value">{employment_type}</span>
+                    </div>
+                    <div class="job-attribute">
+                        <span class="attr-label">Experience</span>
+                        <span class="attr-value">{experience}</span>
+                    </div>
+                    <div class="job-attribute">
+                        <span class="attr-label">Salary</span>
+                        <span class="attr-value">{salary}</span>
+                    </div>
+                    <div class="job-card-actions">
+                        <button type="button" class="button ghost">View details</button>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("</article>", unsafe_allow_html=True)
+
+    return st.session_state.get("selected_job_id")
+
+
+def _derive_job_highlights(description: Optional[str]) -> Tuple[str, List[str]]:
+    if not description or (isinstance(description, float) and pd.isna(description)):
+        return "Job overview is not available for this role yet.", []
+
+    text = str(description)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    segments = [segment.strip("•- \u2022") for segment in text.split("\n") if segment.strip()]
+
+    if not segments:
+        cleaned = re.split(r"(?<=[.!?])\s+", text)
+        segments = [segment.strip("•- ") for segment in cleaned if segment.strip()]
+
+    if not segments:
+        return "Job overview is not available for this role yet.", []
+
+    overview = segments[0]
+    responsibilities = segments[1:] or []
+    return overview, responsibilities
+
+
+def show_job_detail(job: Optional[pd.Series]) -> None:
+    """Render a detailed job preview panel."""
+
+    if job is None:
+        st.markdown(
+            "<div class='job-detail-empty card'>Select a job from the list to view its full description.</div>",
             unsafe_allow_html=True,
         )
+        return
+
+    if isinstance(job, pd.Series):
+        job_data = job.to_dict()
+    else:
+        job_data = job or {}
+
+    def _clean(value: Optional[str], fallback: str = "—") -> str:
+        if value is None:
+            return fallback
+        if isinstance(value, float) and pd.isna(value):
+            return fallback
+        text = str(value).strip()
+        return text or fallback
+
+    raw_job_title = _clean(job_data.get("job_title") or job_data.get("title"), "Untitled role")
+    raw_company = _clean(job_data.get("company"), "Unknown company")
+    job_title = escape(raw_job_title)
+    company = escape(raw_company)
+    location = escape(_clean(job_data.get("location"), "Location not specified"))
+    employment_type = escape(_clean(job_data.get("employment_type") or job_data.get("job_type"), "Full-time"))
+    salary = escape(_clean(job_data.get("salary_range") or job_data.get("salary"), "Not disclosed"))
+    experience = escape(_clean(job_data.get("experience_level") or job_data.get("level"), "All levels"))
+    start_date = escape(_clean(job_data.get("start_date"), "Immediate"))
+    end_date = escape(_clean(job_data.get("end_date"), "Open until filled"))
+
+    overview, bullets = _derive_job_highlights(job_data.get("job_desc"))
+    overview_html = f"<p>{escape(overview)}</p>" if overview else ""
+
+    responsibilities = [escape(item) for item in bullets[:4]]
+    preferred = [escape(item) for item in bullets[4:8]]
+
+    responsibilities_html = (
+        "<ul class='detail-list'>" + "".join(f"<li>{item}</li>" for item in responsibilities) + "</ul>"
+        if responsibilities
+        else "<div class='empty-copy'>Responsibilities will be shared soon.</div>"
+    )
+
+    preferred_html = (
+        "<ul class='detail-list'>" + "".join(f"<li>{item}</li>" for item in preferred) + "</ul>"
+        if preferred
+        else "<div class='empty-copy'>Preferred qualifications will be updated shortly.</div>"
+    )
+
+    qualification_tags = _render_tags(_safe_split(job_data.get("proj_quals", "")))
+    if not qualification_tags:
+        qualification_tags = "<div class='empty-copy'>This role has no specific skills listed yet.</div>"
+
+    match_score = job_data.get("score")
+    if pd.notna(match_score):
+        try:
+            match_value = float(match_score) * 100 if float(match_score) <= 1 else float(match_score)
+            match_display = f"{match_value:.0f}%"
+        except (TypeError, ValueError):
+            match_display = "—"
+    else:
+        match_display = "—"
+
+    benefits = [
+        "Competitive compensation package",
+        "Flexible work arrangements and remote-friendly culture",
+        "Comprehensive health and wellness benefits",
+    ]
+    benefits_html = "<ul class='detail-list'>" + "".join(f"<li>{escape(item)}</li>" for item in benefits) + "</ul>"
+
+    about_team = f"Join {company} to collaborate with a cross-functional team focused on delivering impactful digital experiences."
+    contact_domain = re.sub(r"[^a-z0-9]", "", raw_company.lower()) or "company"
+
+    detail_html = f"""
+    <div class="job-detail-wrapper">
+        <div class="job-detail-main">
+            <article class="detail-card">
+                <header class="detail-header">
+                    <h2>{job_title}</h2>
+                    <p>{company} • {location} • {employment_type}</p>
+                </header>
+                <section class="detail-section">
+                    <h3>Job Overview</h3>
+                    {overview_html}
+                </section>
+                <section class="detail-section">
+                    <h3>Job Responsibilities</h3>
+                    {responsibilities_html}
+                </section>
+                <section class="detail-section">
+                    <h3>Required Skills &amp; Qualifications</h3>
+                    <div class="tag-list">{qualification_tags}</div>
+                </section>
+                <section class="detail-section">
+                    <h3>Preferred Qualifications</h3>
+                    {preferred_html}
+                </section>
+                <section class="detail-section">
+                    <h3>What We Offer</h3>
+                    {benefits_html}
+                </section>
+                <section class="detail-section">
+                    <h3>About the Team</h3>
+                    <p>{about_team}</p>
+                </section>
+            </article>
+        </div>
+        <aside class="job-detail-sidebar">
+            <div class="job-summary-card">
+                <div class="summary-group">
+                    <span class="summary-label">Location</span>
+                    <span class="summary-value">{location}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Employment type</span>
+                    <span class="summary-value">{employment_type}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Experience level</span>
+                    <span class="summary-value">{experience}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Salary range</span>
+                    <span class="summary-value">{salary}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Start date</span>
+                    <span class="summary-value">{start_date}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Closing date</span>
+                    <span class="summary-value">{end_date}</span>
+                </div>
+                <div class="summary-group highlight">
+                    <span class="summary-label">Your match score</span>
+                    <span class="summary-value score">{match_display}</span>
+                </div>
+                <button class="apply-button" type="button">Apply now</button>
+            </div>
+            <div class="sidebar-card">
+                <h4>Recruiter information</h4>
+                <p class="sidebar-text">Have questions? Reach out to the talent team for more details about the role and interview process.</p>
+                <div class="contact-chip">talent@{contact_domain}.com</div>
+            </div>
+        </aside>
+    </div>
+    """
+
+    st.markdown(detail_html, unsafe_allow_html=True)
 
 
 def show_course_cards(recs_df: pd.DataFrame) -> None:
