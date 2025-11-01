@@ -25,6 +25,12 @@ data = init_model()
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 
+if "job_detail_mode" not in st.session_state:
+    st.session_state.job_detail_mode = False
+
+if "selected_job_id" not in st.session_state:
+    st.session_state.selected_job_id = None
+
 if not st.session_state.user_id:
     st.markdown("<h3 class='centered-text'>Login to your account</h3>", unsafe_allow_html=True)
     st.markdown("""
@@ -127,25 +133,24 @@ with tabs[1]:
 
     jobs = top_jobs_for_user(data, user_id, n=5)
     if jobs is not None and not jobs.empty:
-        st.markdown(
-            f"""
-            <div class="job-results-header">
-                <div>
-                    <h3>Job match</h3>
-                    <p>Based on your profile data</p>
+        job_detail_mode = st.session_state.get("job_detail_mode", False)
+        if not job_detail_mode:
+            st.markdown(
+                f"""
+                <div class="job-results-header">
+                    <div>
+                        <h3>Job match</h3>
+                        <p>Based on your profile data</p>
+                    </div>
+                    <span class="results-count">{len(jobs)} roles available</span>
                 </div>
-                <span class="results-count">{len(jobs)} roles available</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
 
-        list_col, detail_col = st.columns([0.55, 0.45])
-
-        with list_col:
-            selected_job_id = show_job_cards(jobs)
-
-        with detail_col:
+            show_job_cards(jobs)
+        else:
+            selected_job_id = st.session_state.get("selected_job_id")
             selected_row = None
             resolved_id = str(selected_job_id) if selected_job_id is not None else None
             if resolved_id:
@@ -164,6 +169,12 @@ with tabs[1]:
                     or 0
                 )
                 st.session_state["selected_job_id"] = str(fallback_id)
+
+            back_col, _ = st.columns([0.2, 0.8])
+            with back_col:
+                if st.button("← Back to job list", use_container_width=True):
+                    st.session_state["job_detail_mode"] = False
+                    st.rerun()
 
             show_job_detail(selected_row)
     else:

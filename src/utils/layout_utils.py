@@ -269,6 +269,8 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
             if clicked:
                 selected_job_id = job_id
                 st.session_state["selected_job_id"] = job_id
+                st.session_state["job_detail_mode"] = True
+                st.rerun()
 
             st.markdown(
                 f"""
