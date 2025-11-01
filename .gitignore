@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+!src/components/job_link_listener/frontend/build/
 *.pyo
 
 # Jupyter Notebooks
