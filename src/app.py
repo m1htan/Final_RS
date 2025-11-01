@@ -78,14 +78,14 @@ with tabs[1]:
                 <div class="filter-field wide">
                     <label>Search</label>
                     <div class="input-shell">
-                        <span class="input-icon">🔍</span>
+                        <span class="input-icon"></span>
                         <input type="text" placeholder="Search job title or keyword" />
                     </div>
                 </div>
                 <div class="filter-field">
                     <label>Location</label>
                     <div class="input-shell">
-                        <span class="input-icon">📍</span>
+                        <span class="input-icon"></span>
                         <select>
                             <option selected>All locations</option>
                             <option>Remote</option>
@@ -96,7 +96,7 @@ with tabs[1]:
                 <div class="filter-field">
                     <label>Job type</label>
                     <div class="input-shell">
-                        <span class="input-icon">🕑</span>
+                        <span class="input-icon"></span>
                         <select>
                             <option selected>Any type</option>
                             <option>Full-time</option>
@@ -108,7 +108,7 @@ with tabs[1]:
                 <div class="filter-field">
                     <label>Salary range</label>
                     <div class="input-shell">
-                        <span class="input-icon">💰</span>
+                        <span class="input-icon"></span>
                         <select>
                             <option selected>All ranges</option>
                             <option>Up to $60k</option>
