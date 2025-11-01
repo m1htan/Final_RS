@@ -219,11 +219,6 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
     selected_job_id = st.session_state.get("selected_job_id")
     selected_job_id = str(selected_job_id) if selected_job_id is not None else None
 
-    if selected_job_id is None and not jobs_df.empty:
-        first_row = jobs_df.iloc[0]
-        selected_job_id = _job_identifier(first_row, 0)
-        st.session_state["selected_job_id"] = selected_job_id
-
     for index, row in jobs_df.iterrows():
         job_id = _job_identifier(row, index)
         is_active = selected_job_id == job_id
