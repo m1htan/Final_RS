@@ -31,6 +31,18 @@ if "job_detail_mode" not in st.session_state:
 if "selected_job_id" not in st.session_state:
     st.session_state.selected_job_id = None
 
+query_params = st.experimental_get_query_params()
+requested_job = query_params.get("job_id", [None])
+requested_job = requested_job[0] if requested_job else None
+requested_view = query_params.get("view", [None])
+requested_view = requested_view[0] if requested_view else None
+
+if requested_job:
+    st.session_state.selected_job_id = requested_job
+    st.session_state.job_detail_mode = True
+elif requested_view == "list":
+    st.session_state.job_detail_mode = False
+
 if not st.session_state.user_id:
     st.markdown("<h3 class='centered-text'>Login to your account</h3>", unsafe_allow_html=True)
     st.markdown("""
@@ -128,7 +140,7 @@ with tabs[1]:
         unsafe_allow_html=True,
     )
 
-    jobs = top_jobs_for_user(data, user_id, n=5)
+    jobs = top_jobs_for_user(data, user_id, n=6)
     if jobs is not None and not jobs.empty:
         job_detail_mode = st.session_state.get("job_detail_mode", False)
         if not job_detail_mode:
@@ -167,10 +179,37 @@ with tabs[1]:
                 )
                 st.session_state["selected_job_id"] = str(fallback_id)
 
+            if resolved_id:
+                existing_params = st.experimental_get_query_params()
+                existing_job = existing_params.get("job_id", [None])
+                existing_job = existing_job[0] if existing_job else None
+                existing_view = existing_params.get("view", [None])
+                existing_view = existing_view[0] if existing_view else None
+                if existing_job != resolved_id or existing_view != "detail":
+                    new_params = {
+                        key: value
+                        for key, value in existing_params.items()
+                        if key not in {"job_id", "view"}
+                    }
+                    new_params["job_id"] = resolved_id
+                    new_params["view"] = "detail"
+                    st.experimental_set_query_params(
+                        **{
+                            key: value if isinstance(value, list) else [value]
+                            for key, value in new_params.items()
+                        }
+                    )
+
             back_col, _ = st.columns([0.2, 0.8])
             with back_col:
                 if st.button("← Back to job list", use_container_width=True):
                     st.session_state["job_detail_mode"] = False
+                    cleaned = {
+                        key: value
+                        for key, value in st.experimental_get_query_params().items()
+                        if key not in {"job_id", "view"}
+                    }
+                    st.experimental_set_query_params(**{k: v for k, v in cleaned.items()}, view="list")
                     st.rerun()
 
             show_job_detail(selected_row)

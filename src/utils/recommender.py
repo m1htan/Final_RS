@@ -25,8 +25,6 @@ def top_jobs_for_user(data, user_id, n=5):
         return pd.DataFrame()
 
     subset = merged[merged["user_id"] == user_id].copy()
-    if subset.empty:
-        return pd.DataFrame()
 
     job_df = data.get("job_df", pd.DataFrame())
     if not job_df.empty and "jid" in job_df.columns:
@@ -61,8 +59,14 @@ def top_jobs_for_user(data, user_id, n=5):
                 if title_column:
                     title_map = job_df.set_index("jid")[title_column]
                     subset["job_title"] = subset["jid"].map(title_map)
-            if "job_title" not in subset.columns:
-                subset["job_title"] = subset["jid"]
+        if "job_title" not in subset.columns:
+            subset["job_title"] = subset["jid"]
+
+    if "score" in subset.columns:
+        subset = subset.sort_values(by="score", ascending=False, na_position="last")
+
+    if "jid" in subset.columns:
+        subset = subset.drop_duplicates(subset=["jid"], keep="first")
 
     desired_order = [
         "jid",
@@ -81,8 +85,36 @@ def top_jobs_for_user(data, user_id, n=5):
         "end_date",
         "score",
     ]
-    available_columns = [col for col in desired_order if col in subset.columns]
-    return subset[available_columns].head(n)
+    combined = subset.copy()
+
+    if len(combined) < n and not job_df.empty:
+        fallback_jobs = job_df.copy()
+
+        if "job_title" not in fallback_jobs.columns and "title" in fallback_jobs.columns:
+            fallback_jobs = fallback_jobs.rename(columns={"title": "job_title"})
+
+        if "jid" in fallback_jobs.columns and "jid" in combined.columns:
+            existing_ids = combined["jid"].astype(str).tolist()
+            fallback_jobs = fallback_jobs[
+                ~fallback_jobs["jid"].astype(str).isin(existing_ids)
+            ]
+
+        fallback_columns = [col for col in desired_order if col in fallback_jobs.columns]
+        if fallback_columns:
+            fallback_jobs = fallback_jobs[fallback_columns]
+            fallback_jobs = fallback_jobs.head(max(n - len(combined), 0))
+
+            if not fallback_jobs.empty:
+                if "score" not in fallback_jobs.columns:
+                    fallback_jobs["score"] = None
+
+                combined = pd.concat([combined, fallback_jobs], ignore_index=True, sort=False)
+
+    final_columns = [col for col in desired_order if col in combined.columns]
+    if not final_columns:
+        return pd.DataFrame()
+
+    return combined[final_columns].head(n)
 
 def recommend_for_user(data, user_id):
     recs = data.get("recommendations", {})
