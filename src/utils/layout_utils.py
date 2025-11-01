@@ -305,7 +305,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <div class="job-card-content">
                     <div class="job-card-header">
                         <div class="job-card-title">
-                            <a class="job-card-link" href="{_detail_link(job_id)}">{job_title}</a>
+                            <a class="job-card-link" href="{_detail_link(job_id)}" target="_self">{job_title}</a>
                         </div>
                         <span class="match-chip">{match_label}</span>
                     </div>

@@ -87,29 +87,6 @@ def top_jobs_for_user(data, user_id, n=5):
     ]
     combined = subset.copy()
 
-    if len(combined) < n and not job_df.empty:
-        fallback_jobs = job_df.copy()
-
-        if "job_title" not in fallback_jobs.columns and "title" in fallback_jobs.columns:
-            fallback_jobs = fallback_jobs.rename(columns={"title": "job_title"})
-
-        if "jid" in fallback_jobs.columns and "jid" in combined.columns:
-            existing_ids = combined["jid"].astype(str).tolist()
-            fallback_jobs = fallback_jobs[
-                ~fallback_jobs["jid"].astype(str).isin(existing_ids)
-            ]
-
-        fallback_columns = [col for col in desired_order if col in fallback_jobs.columns]
-        if fallback_columns:
-            fallback_jobs = fallback_jobs[fallback_columns]
-            fallback_jobs = fallback_jobs.head(max(n - len(combined), 0))
-
-            if not fallback_jobs.empty:
-                if "score" not in fallback_jobs.columns:
-                    fallback_jobs["score"] = None
-
-                combined = pd.concat([combined, fallback_jobs], ignore_index=True, sort=False)
-
     final_columns = [col for col in desired_order if col in combined.columns]
     if not final_columns:
         return pd.DataFrame()
