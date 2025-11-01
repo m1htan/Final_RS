@@ -1,4 +1,5 @@
 import base64
+import json
 import re
 from html import escape
 from pathlib import Path
@@ -13,13 +14,7 @@ import streamlit.components.v1 as components
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "images"
 
-_JOB_LINK_COMPONENT_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "components"
-    / "job_link_listener"
-    / "frontend"
-    / "build"
-)
+_JOB_LINK_COMPONENT_DIR = Path(__file__).resolve().parents[1] / "components" / "job_link_listener"
 job_link_listener = components.declare_component(
     "job_link_listener",
     path=str(_JOB_LINK_COMPONENT_DIR),
@@ -293,6 +288,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         ).strip()
 
         job_id_str = str(job_id)
+        job_id_js = json.dumps(job_id_str)
         card_html = dedent(
             f"""
             <article class="{card_classes}">
@@ -302,7 +298,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <div class="job-card-content">
                     <div class="job-card-header">
                         <div class="job-card-title">
-                            <a class="job-card-link" href="#job-match" data-job-id="{escape(job_id_str)}" role="link">{job_title}</a>
+                            <a class="job-card-link" href="#" data-job-id="{escape(job_id_str)}" role="link" onclick="window.postMessage({{type:'job-link-clicked', jobId:{job_id_js}}}, '*'); return false;">{job_title}</a>
                         </div>
                         <span class="match-chip">{match_label}</span>
                     </div>
@@ -530,7 +526,7 @@ def show_course_cards(recs_df: pd.DataFrame) -> None:
                 <h4>{course.get('course_name', 'Untitled course')}</h4>
                 <p><strong>Provider:</strong> {course.get('provider', 'N/A')}</p>
                 <p><strong>Duration:</strong> {course.get('duration_hours', 'N/A')} hours</p>
-                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} ⭐</p>
+                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} / 5</p>
                 <p>You'll sharpen these skills:</p>
                 <div class="tag-list">{taught or '<span class="pill">Skills unavailable</span>'}</div>
                 <div class="card-footer">
