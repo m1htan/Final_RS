@@ -201,21 +201,73 @@ def show_profile_card(user: dict) -> None:
 
 
 def show_job_cards(jobs_df: pd.DataFrame) -> None:
-    """Render job recommendations as friendly cards."""
+    """Render job recommendations as modern cards."""
 
+    cards: List[str] = []
     for _, row in jobs_df.iterrows():
         skills = _render_tags(_safe_split(row.get("proj_quals", "")))
-        st.markdown(
+        job_title = row.get("job_title") or row.get("jid") or "Untitled role"
+        company = row.get("company") or "Unknown company"
+        location = row.get("location") or "Location not specified"
+        employment_type = row.get("employment_type") or row.get("job_type") or "Full-time"
+        salary = row.get("salary_range") or row.get("salary") or "Salary not disclosed"
+        experience = row.get("experience_level") or row.get("level") or "All levels"
+
+        score = row.get("score")
+        if pd.notna(score):
+            try:
+                score_value = float(score) * 100 if float(score) <= 1 else float(score)
+            except (TypeError, ValueError):
+                score_value = None
+        else:
+            score_value = None
+
+        initials = str(company)[:1].upper() if company and str(company).strip() else "J"
+        skills_markup = skills or "<span class='pill'>Skills unavailable</span>"
+
+        cards.append(
             f"""
-            <div class="card">
-                <h4>Job match: {row.get('jid', 'Unknown')}</h4>
-                <p>These are the core skills that align with you:</p>
-                <div class="tag-list">{skills or '<span class="pill">Skills unavailable</span>'}</div>
-                <div class="card-footer">
-                    <span>Recommended based on your profile</span>
+            <article class="job-card">
+                <div class="job-card-header">
+                    <div class="job-card-avatar">{initials}</div>
+                    <div class="job-card-summary">
+                        <h4>{job_title}</h4>
+                        <div class="job-meta">
+                            <span>{company}</span>
+                            <span class="dot"></span>
+                            <span>{location}</span>
+                        </div>
+                    </div>
+                    <div class="job-score">
+                        <span class="score-label">Match score</span>
+                        <span class="score-value">{f'{score_value:.0f}%' if score_value is not None else '—'}</span>
+                    </div>
                 </div>
-            </div>
-            """,
+                <div class="job-tags" aria-label="Key skills">{skills_markup}</div>
+                <div class="job-card-footer">
+                    <div class="job-attribute">
+                        <span class="attr-label">Type</span>
+                        <span class="attr-value">{employment_type}</span>
+                    </div>
+                    <div class="job-attribute">
+                        <span class="attr-label">Experience</span>
+                        <span class="attr-value">{experience}</span>
+                    </div>
+                    <div class="job-attribute">
+                        <span class="attr-label">Salary</span>
+                        <span class="attr-value">{salary}</span>
+                    </div>
+                    <div class="job-card-actions">
+                        <button type="button" class="button ghost">View details</button>
+                    </div>
+                </div>
+            </article>
+            """
+        )
+
+    if cards:
+        st.markdown(
+            "<div class='job-card-list'>" + "".join(cards) + "</div>",
             unsafe_allow_html=True,
         )
 

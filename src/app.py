@@ -62,10 +62,78 @@ with tabs[0]:
         st.warning("User not found in dataset.")
 
 with tabs[1]:
-    st.subheader("Top Matching Jobs")
-    st.markdown("<div id='job-match'></div>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <section class="job-match-hero" id="job-match">
+            <div class="job-hero-copy">
+                <h2>Find Job</h2>
+                <p>Discover curated opportunities that align with your strengths and aspirations.</p>
+            </div>
+            <div class="job-filter-bar">
+                <div class="filter-field wide">
+                    <label>Search</label>
+                    <div class="input-shell">
+                        <span class="input-icon">🔍</span>
+                        <input type="text" placeholder="Search job title or keyword" />
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Location</label>
+                    <div class="input-shell">
+                        <span class="input-icon">📍</span>
+                        <select>
+                            <option selected>All locations</option>
+                            <option>Remote</option>
+                            <option>On-site</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Job type</label>
+                    <div class="input-shell">
+                        <span class="input-icon">🕑</span>
+                        <select>
+                            <option selected>Any type</option>
+                            <option>Full-time</option>
+                            <option>Part-time</option>
+                            <option>Contract</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-field">
+                    <label>Salary range</label>
+                    <div class="input-shell">
+                        <span class="input-icon">💰</span>
+                        <select>
+                            <option selected>All ranges</option>
+                            <option>Up to $60k</option>
+                            <option>$60k - $90k</option>
+                            <option>$90k - $120k</option>
+                            <option>$120k+</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="filter-button">Filter</button>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
     jobs = top_jobs_for_user(data, user_id, n=5)
     if jobs is not None and not jobs.empty:
+        st.markdown(
+            f"""
+            <div class="job-results-header">
+                <div>
+                    <h3>Job match</h3>
+                    <p>Based on your profile data</p>
+                </div>
+                <span class="results-count">{len(jobs)} roles available</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         show_job_cards(jobs)
     else:
         st.info("No job match data available for this user.")
