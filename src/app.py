@@ -25,12 +25,6 @@ data = init_model()
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 
-if "job_detail_mode" not in st.session_state:
-    st.session_state.job_detail_mode = False
-
-if "job_match_view" not in st.session_state:
-    st.session_state.job_match_view = "list"
-
 if "selected_job_id" not in st.session_state:
     st.session_state.selected_job_id = None
 
@@ -52,10 +46,8 @@ if not st.session_state.user_id:
     if submitted:
         if user_id and user_id in data["employee_df"]["user_id"].values:
             st.session_state.user_id = user_id
-            st.session_state.job_detail_mode = False
             st.session_state.selected_job_id = None
             st.session_state.job_click_nonce = None
-            st.session_state.job_match_view = "list"
             st.success(f"Welcome back, {user_id}! Redirecting...")
             st.rerun()
         else:
@@ -66,10 +58,8 @@ col1, col2 = st.columns([0.85, 0.15])
 with col2:
     if st.button("Logout"):
         st.session_state.user_id = None
-        st.session_state.job_detail_mode = False
         st.session_state.selected_job_id = None
         st.session_state.job_click_nonce = None
-        st.session_state.job_match_view = "list"
         st.rerun()
 
 user_id = st.session_state.user_id
@@ -144,17 +134,23 @@ with tabs[1]:
 
     jobs = top_jobs_for_user(data, user_id, n=6)
     if jobs is not None and not jobs.empty:
-        current_view = st.session_state.get("job_match_view", "list")
-        if current_view not in {"list", "detail"}:
-            current_view = "list"
-        if current_view == "detail" and not st.session_state.get("selected_job_id"):
-            current_view = "list"
-            st.session_state.selected_job_id = None
+        selected_job_id = st.session_state.get("selected_job_id")
+        selected_row = None
 
-        st.session_state.job_match_view = current_view
-        st.session_state.job_detail_mode = current_view == "detail"
+        if selected_job_id is not None:
+            resolved_id = str(selected_job_id)
+            for key in ("jid", "job_id", "id"):
+                if key in jobs.columns:
+                    matches = jobs[jobs[key].astype(str) == resolved_id]
+                    if not matches.empty:
+                        selected_row = matches.iloc[0]
+                        break
 
-        if current_view == "list":
+            if selected_row is None:
+                st.session_state.selected_job_id = None
+                selected_job_id = None
+
+        if selected_job_id is None:
             st.markdown(
                 f"""
                 <div class="job-results-header">
@@ -168,43 +164,24 @@ with tabs[1]:
                 unsafe_allow_html=True,
             )
 
+            previous_selection = st.session_state.get("selected_job_id")
             show_job_cards(jobs)
-            if st.session_state.get("job_match_view") == "detail":
-                st.session_state.job_detail_mode = True
+            if st.session_state.get("selected_job_id") is not None and (
+                st.session_state.get("selected_job_id") != previous_selection
+            ):
                 st.rerun()
         else:
-            selected_job_id = st.session_state.get("selected_job_id")
-            selected_row = None
-            resolved_id = str(selected_job_id) if selected_job_id is not None else None
-            if resolved_id:
-                for key in ("jid", "job_id", "id"):
-                    if key in jobs.columns:
-                        matches = jobs[jobs[key].astype(str) == resolved_id]
-                        if not matches.empty:
-                            selected_row = matches.iloc[0]
-                            break
-            if selected_row is None and not jobs.empty:
-                selected_row = jobs.iloc[0]
-                fallback_id = (
-                    selected_row.get("jid")
-                    or selected_row.get("job_id")
-                    or selected_row.get("id")
-                    or 0
-                )
-                st.session_state["selected_job_id"] = str(fallback_id)
-
             back_col, _ = st.columns([0.2, 0.8])
             with back_col:
                 if st.button("← Back to job list", use_container_width=True):
-                    st.session_state["job_detail_mode"] = False
                     st.session_state["selected_job_id"] = None
-                    st.session_state["job_match_view"] = "list"
+                    st.session_state["job_click_nonce"] = None
                     st.rerun()
 
             show_job_detail(selected_row)
     else:
-        st.session_state.job_detail_mode = False
-        st.session_state.job_match_view = "list"
+        st.session_state.selected_job_id = None
+        st.session_state.job_click_nonce = None
         st.info("No job match data available for this user.")
 
 with tabs[2]:

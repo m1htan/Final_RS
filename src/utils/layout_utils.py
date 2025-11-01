@@ -216,12 +216,12 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                     return value
         return str(fallback)
 
-    selected_job_id = st.session_state.get("selected_job_id")
-    selected_job_id = str(selected_job_id) if selected_job_id is not None else None
+    active_job_id = st.session_state.get("selected_job_id")
+    active_job_id = str(active_job_id) if active_job_id is not None else None
 
     for index, row in jobs_df.iterrows():
         job_id = _job_identifier(row, index)
-        is_active = selected_job_id == job_id
+        is_active = active_job_id == job_id
 
         raw_job_title = (
             row.get("job_title")
@@ -376,12 +376,8 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
             if nonce and nonce != last_nonce:
                 st.session_state["job_click_nonce"] = nonce
                 st.session_state["selected_job_id"] = job_id
-                st.session_state["job_detail_mode"] = True
-                st.session_state["job_match_view"] = "detail"
             elif not nonce and job_id != st.session_state.get("selected_job_id"):
                 st.session_state["selected_job_id"] = job_id
-                st.session_state["job_detail_mode"] = True
-                st.session_state["job_match_view"] = "detail"
 
     return st.session_state.get("selected_job_id")
 
