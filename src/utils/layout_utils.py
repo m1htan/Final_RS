@@ -225,7 +225,6 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         job_id = _job_identifier(row, index)
         is_active = selected_job_id == job_id
 
-        skills = _render_tags(_safe_split(row.get("proj_quals", "")))
         raw_job_title = (
             row.get("job_title")
             or row.get("title")
@@ -238,8 +237,13 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         employment_type = escape(
             str(row.get("employment_type") or row.get("job_type") or "Full-time")
         )
-        salary = escape(str(row.get("salary_range") or row.get("salary") or "Salary not disclosed"))
-        experience = escape(str(row.get("experience_level") or row.get("level") or "All levels"))
+        salary = escape(
+            str(row.get("salary_range") or row.get("salary") or "Salary not disclosed")
+        )
+        experience = escape(
+            str(row.get("experience_level") or row.get("level") or "All levels")
+        )
+        posted = escape(str(row.get("posted") or row.get("timeline") or "Just posted"))
 
         score = row.get("score")
         if pd.notna(score):
@@ -250,9 +254,18 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         else:
             score_value = None
 
+        match_label = f"Match {score_value:.0f}%" if score_value is not None else "Match —"
+
+        skills = _render_tags(_safe_split(row.get("proj_quals", "")))
+        if not skills:
+            skills = "<span class='pill muted'>Skills unavailable</span>"
+
         initials_source = row.get("company") or raw_job_title
-        initials = str(initials_source)[:1].upper() if initials_source and str(initials_source).strip() else "J"
-        skills_markup = skills or "<span class='pill'>Skills unavailable</span>"
+        initials = (
+            str(initials_source)[:1].upper()
+            if initials_source and str(initials_source).strip()
+            else "J"
+        )
 
         card_classes = "job-card"
         if is_active:
@@ -260,56 +273,56 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
 
         with st.container():
             st.markdown(f"<article class='{card_classes}'>", unsafe_allow_html=True)
-            button_key = f"job_select_{job_id}_{index}"
-            clicked = st.button(
-                str(raw_job_title),
-                key=button_key,
-                use_container_width=True,
-            )
+            body_cols = st.columns([0.12, 0.88])
+            with body_cols[0]:
+                st.markdown(
+                    f"<div class='job-card-badge' aria-hidden='true'>{escape(initials)}</div>",
+                    unsafe_allow_html=True,
+                )
+            with body_cols[1]:
+                header_cols = st.columns([0.65, 0.35])
+                with header_cols[0]:
+                    st.markdown("<div class='job-card-title'>", unsafe_allow_html=True)
+                    button_key = f"job_select_{job_id}_{index}"
+                    clicked = st.button(
+                        str(raw_job_title),
+                        key=button_key,
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+                with header_cols[1]:
+                    st.markdown(
+                        f"<div class='match-chip'>{match_label}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+                meta_line = f"<div class='job-card-meta'><span>{company}</span><span class='dot'></span><span>{location}</span></div>"
+                st.markdown(meta_line, unsafe_allow_html=True)
+
+                highlights = (
+                    f"""
+                    <div class='job-card-highlights'>
+                        <span class='pill soft'>{employment_type}</span>
+                        <span class='pill soft'>{experience}</span>
+                        <span class='pill muted'>{salary}</span>
+                        <span class='pill muted'>{posted}</span>
+                    </div>
+                    """
+                )
+                st.markdown(highlights, unsafe_allow_html=True)
+
+                st.markdown(
+                    f"<div class='job-card-skills' aria-label='Key skills'>{skills}</div>",
+                    unsafe_allow_html=True,
+                )
+
+            st.markdown("</article>", unsafe_allow_html=True)
+
             if clicked:
                 selected_job_id = job_id
                 st.session_state["selected_job_id"] = job_id
                 st.session_state["job_detail_mode"] = True
                 st.rerun()
-
-            st.markdown(
-                f"""
-                <div class="job-card-header">
-                    <div class="job-card-avatar">{escape(initials)}</div>
-                    <div class="job-card-summary">
-                        <div class="job-meta">
-                            <span>{company}</span>
-                            <span class="dot"></span>
-                            <span>{location}</span>
-                        </div>
-                    </div>
-                    <div class="job-score">
-                        <span class="score-label">Match score</span>
-                        <span class="score-value">{f'{score_value:.0f}%' if score_value is not None else '—'}</span>
-                    </div>
-                </div>
-                <div class="job-tags" aria-label="Key skills">{skills_markup}</div>
-                <div class="job-card-footer">
-                    <div class="job-attribute">
-                        <span class="attr-label">Type</span>
-                        <span class="attr-value">{employment_type}</span>
-                    </div>
-                    <div class="job-attribute">
-                        <span class="attr-label">Experience</span>
-                        <span class="attr-value">{experience}</span>
-                    </div>
-                    <div class="job-attribute">
-                        <span class="attr-label">Salary</span>
-                        <span class="attr-value">{salary}</span>
-                    </div>
-                    <div class="job-card-actions">
-                        <button type="button" class="button ghost">View details</button>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.markdown("</article>", unsafe_allow_html=True)
 
     return st.session_state.get("selected_job_id")
 
