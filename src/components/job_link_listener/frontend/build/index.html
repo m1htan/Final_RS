@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Job Link Listener</title>
+    <style>
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+<script>
+(function() {
+    const Streamlit = window.parent.Streamlit || window.Streamlit;
+    const NONCE_PREFIX = `job-link-${Date.now()}`;
+    let counter = 0;
+
+    function notifyReady() {
+        if (Streamlit && Streamlit.setComponentReady) {
+            Streamlit.setComponentReady();
+        }
+        if (Streamlit && Streamlit.setFrameHeight) {
+            Streamlit.setFrameHeight(0);
+        }
+    }
+
+    function emitSelection(jobId) {
+        if (!jobId || !Streamlit || !Streamlit.setComponentValue) {
+            return;
+        }
+        const payload = {
+            jobId: String(jobId),
+            nonce: `${NONCE_PREFIX}-${counter++}`
+        };
+        Streamlit.setComponentValue(payload);
+    }
+
+    function resolveAnchor(target) {
+        if (!target) {
+            return null;
+        }
+
+        let element = target;
+        if (element.nodeType === Node.TEXT_NODE) {
+            element = element.parentElement;
+        }
+
+        if (!element) {
+            return null;
+        }
+
+        if (typeof element.closest === 'function') {
+            return element.closest('a.job-card-link');
+        }
+
+        while (element) {
+            if (element.tagName && element.tagName.toLowerCase() === 'a' && element.classList && element.classList.contains('job-card-link')) {
+                return element;
+            }
+            element = element.parentElement;
+        }
+
+        return null;
+    }
+
+    function handleDocumentClick(event) {
+        if (!event) {
+            return;
+        }
+
+        const anchor = resolveAnchor(event.target);
+        if (!anchor) {
+            return;
+        }
+
+        const jobId = anchor.getAttribute('data-job-id');
+        if (!jobId) {
+            return;
+        }
+
+        event.preventDefault();
+        emitSelection(jobId);
+    }
+
+    function attachListener() {
+        if (!window.parent || !window.parent.document) {
+            return;
+        }
+        const parentDoc = window.parent.document;
+        if (parentDoc.__jobLinkListenerAttached) {
+            return;
+        }
+        parentDoc.__jobLinkListenerAttached = true;
+        parentDoc.addEventListener('click', handleDocumentClick, true);
+    }
+
+    notifyReady();
+    attachListener();
+})();
+</script>
+</body>
+</html>
