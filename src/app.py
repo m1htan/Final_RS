@@ -186,7 +186,6 @@ with tabs[1]:
                 if st.button("← Back to job list", use_container_width=True):
                     st.session_state["job_detail_mode"] = False
                     st.session_state["selected_job_id"] = None
-                    st.session_state["job_click_nonce"] = None
                     st.rerun()
 
             show_job_detail(selected_row)
