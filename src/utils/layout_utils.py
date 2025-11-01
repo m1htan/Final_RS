@@ -1,4 +1,5 @@
 import base64
+import json
 import re
 from html import escape
 from pathlib import Path
@@ -328,7 +329,11 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                     event.preventDefault();
                     const jobId = link.getAttribute('data-job-id');
                     if (Streamlit && jobId) {
-                        Streamlit.setComponentValue(jobId);
+                        const payload = {
+                            jobId: jobId,
+                            nonce: `${Date.now()}_${Math.random().toString(16).slice(2)}`
+                        };
+                        Streamlit.setComponentValue(JSON.stringify(payload));
                     }
                 });
             });
@@ -354,8 +359,32 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
     )
 
     if selection:
-        st.session_state["selected_job_id"] = str(selection)
-        st.session_state["job_detail_mode"] = True
+        job_id = None
+        nonce = None
+        if isinstance(selection, str):
+            try:
+                payload = json.loads(selection)
+            except (json.JSONDecodeError, TypeError):
+                payload = None
+
+            if isinstance(payload, dict):
+                job_id = payload.get("jobId") or payload.get("job_id") or payload.get("id")
+                nonce = payload.get("nonce")
+            else:
+                job_id = selection
+        else:
+            job_id = str(selection)
+
+        if job_id:
+            job_id = str(job_id)
+            last_nonce = st.session_state.get("job_click_nonce")
+            if nonce and nonce != last_nonce:
+                st.session_state["job_click_nonce"] = nonce
+                st.session_state["selected_job_id"] = job_id
+                st.session_state["job_detail_mode"] = True
+            elif not nonce and job_id != st.session_state.get("selected_job_id"):
+                st.session_state["selected_job_id"] = job_id
+                st.session_state["job_detail_mode"] = True
 
     return st.session_state.get("selected_job_id")
 
