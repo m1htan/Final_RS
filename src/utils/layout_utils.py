@@ -14,6 +14,13 @@ import streamlit.components.v1 as components
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "images"
 
+_JOB_LINK_COMPONENT_DIR = Path(__file__).resolve().parents[1] / "components" / "job_link_listener"
+job_link_listener = components.declare_component(
+    "job_link_listener",
+    path=str(_JOB_LINK_COMPONENT_DIR),
+    default=None,
+)
+
 
 def _render_tags(items: Iterable[str]) -> str:
     tags = [f"<span class='pill'>{escape(item.strip())}</span>" for item in items if item and item.strip()]
@@ -280,6 +287,8 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
             """
         ).strip()
 
+        job_id_str = str(job_id)
+        job_id_js = json.dumps(job_id_str)
         card_html = dedent(
             f"""
             <article class="{card_classes}">
@@ -289,7 +298,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <div class="job-card-content">
                     <div class="job-card-header">
                         <div class="job-card-title">
-                            <a class="job-card-link" href="#" data-job-id="{escape(job_id)}" role="link">{job_title}</a>
+                            <a class="job-card-link" href="#" data-job-id="{escape(job_id_str)}" role="link" onclick="window.postMessage({{type:'job-link-clicked', jobId:{job_id_js}}}, '*'); return false;">{job_title}</a>
                         </div>
                         <span class="match-chip">{match_label}</span>
                     </div>
@@ -307,66 +316,16 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
 
         st.markdown(card_html, unsafe_allow_html=True)
 
-    selection = components.html(
-        """
-        <script>
-        const Streamlit = window.parent.Streamlit || window.Streamlit;
-        const doc = window.parent.document;
-
-        function wireJobLinks() {
-            const links = doc.querySelectorAll('a.job-card-link[data-job-id]');
-            links.forEach((link) => {
-                if (link.dataset.listenerAttached === 'true') {
-                    return;
-                }
-                link.dataset.listenerAttached = 'true';
-                link.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const jobId = link.getAttribute('data-job-id');
-                    if (Streamlit && jobId) {
-                        const payload = {
-                            jobId: jobId,
-                            nonce: `${Date.now()}_${Math.random().toString(16).slice(2)}`
-                        };
-                        Streamlit.setComponentValue(JSON.stringify(payload));
-                    }
-                });
-            });
-        }
-
-        wireJobLinks();
-
-        const observer = new MutationObserver(() => {
-            wireJobLinks();
-        });
-        observer.observe(doc.body, { childList: true, subtree: true });
-
-        if (Streamlit && Streamlit.setComponentReady) {
-            Streamlit.setComponentReady();
-        }
-        if (Streamlit && Streamlit.setFrameHeight) {
-            Streamlit.setFrameHeight(0);
-        }
-        </script>
-        """,
-        height=0,
-        scrolling=False,
-    )
+    selection = job_link_listener()
 
     if selection:
         job_id = None
         nonce = None
-        if isinstance(selection, str):
-            try:
-                payload = json.loads(selection)
-            except (json.JSONDecodeError, TypeError):
-                payload = None
-
-            if isinstance(payload, dict):
-                job_id = payload.get("jobId") or payload.get("job_id") or payload.get("id")
-                nonce = payload.get("nonce")
-            else:
-                job_id = selection
+        if isinstance(selection, dict):
+            job_id = selection.get("jobId") or selection.get("job_id") or selection.get("id")
+            nonce = selection.get("nonce")
+        elif isinstance(selection, str):
+            job_id = selection
         else:
             job_id = str(selection)
 
