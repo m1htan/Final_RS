@@ -11,6 +11,8 @@
 <script>
 (function() {
     const Streamlit = window.parent.Streamlit || window.Streamlit;
+    const NONCE_PREFIX = `job-link-${Date.now()}`;
+    let counter = 0;
 
     function notifyReady() {
         if (Streamlit && Streamlit.setComponentReady) {
@@ -21,23 +23,53 @@
         }
     }
 
-    function handleMessage(event) {
-        const data = event && event.data ? event.data : {};
-        if (!data || data.type !== 'job-link-clicked' || !data.jobId) {
+    function emitSelection(jobId) {
+        if (!jobId || !Streamlit || !Streamlit.setComponentValue) {
+            return;
+        }
+        const payload = {
+            jobId: String(jobId),
+            nonce: `${NONCE_PREFIX}-${counter++}`
+        };
+        Streamlit.setComponentValue(payload);
+    }
+
+    function handleDocumentClick(event) {
+        if (!event) {
+            return;
+        }
+        const target = event.target;
+        if (!target) {
+            return;
+        }
+        const anchor = target.closest ? target.closest('a.job-card-link') : null;
+        if (!anchor) {
             return;
         }
 
-        if (Streamlit && Streamlit.setComponentValue) {
-            const payload = {
-                jobId: String(data.jobId),
-                nonce: `${Date.now()}_${Math.random().toString(16).slice(2)}`
-            };
-            Streamlit.setComponentValue(payload);
+        const jobId = anchor.getAttribute('data-job-id');
+        if (!jobId) {
+            return;
         }
+
+        event.preventDefault();
+        emitSelection(jobId);
     }
 
-    window.addEventListener('message', handleMessage, false);
+    function attachListener() {
+        if (!window.parent || !window.parent.document) {
+            return;
+        }
+        const parentDoc = window.parent.document;
+        if (parentDoc.__jobLinkListenerAttached) {
+            return;
+        }
+        parentDoc.__jobLinkListenerAttached = true;
+        parentDoc.addEventListener('click', handleDocumentClick, true);
+    }
+
     notifyReady();
+    attachListener();
 })();
 </script>
 </body>

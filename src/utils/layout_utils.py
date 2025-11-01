@@ -1,5 +1,4 @@
 import base64
-import json
 import re
 from html import escape
 from pathlib import Path
@@ -14,11 +13,16 @@ import streamlit.components.v1 as components
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "images"
 
-_JOB_LINK_COMPONENT_DIR = Path(__file__).resolve().parents[1] / "components" / "job_link_listener"
+_JOB_LINK_COMPONENT_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "components"
+    / "job_link_listener"
+    / "frontend"
+    / "build"
+)
 job_link_listener = components.declare_component(
     "job_link_listener",
     path=str(_JOB_LINK_COMPONENT_DIR),
-    default=None,
 )
 
 
@@ -288,7 +292,6 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         ).strip()
 
         job_id_str = str(job_id)
-        job_id_js = json.dumps(job_id_str)
         card_html = dedent(
             f"""
             <article class="{card_classes}">
@@ -298,7 +301,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <div class="job-card-content">
                     <div class="job-card-header">
                         <div class="job-card-title">
-                            <a class="job-card-link" href="#" data-job-id="{escape(job_id_str)}" role="link" onclick="window.postMessage({{type:'job-link-clicked', jobId:{job_id_js}}}, '*'); return false;">{job_title}</a>
+                            <a class="job-card-link" href="#job-match" data-job-id="{escape(job_id_str)}" role="link">{job_title}</a>
                         </div>
                         <span class="match-chip">{match_label}</span>
                     </div>
@@ -316,7 +319,7 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
 
         st.markdown(card_html, unsafe_allow_html=True)
 
-    selection = job_link_listener()
+    selection = job_link_listener(default=None)
 
     if selection:
         job_id = None
