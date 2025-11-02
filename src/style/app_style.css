@@ -694,11 +694,31 @@ button[data-testid="baseButton-secondary"] {
 }
 
 .timeline-track {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(16, minmax(0, 1fr));
     gap: 8px;
     height: 48px;
     align-items: center;
+    border-radius: 16px;
+    padding: 4px 0;
+    overflow: hidden;
+}
+
+.timeline-track::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(15, 23, 42, 0.02);
+    background-image: repeating-linear-gradient(
+        to right,
+        rgba(148, 163, 184, 0.35),
+        rgba(148, 163, 184, 0.35) 1px,
+        transparent 1px,
+        transparent calc(100% / 16)
+    );
+    pointer-events: none;
 }
 
 .timeline-bar {
@@ -715,6 +735,7 @@ button[data-testid="baseButton-secondary"] {
     font-size: 14px;
     padding: 0 12px;
     text-align: center;
+    z-index: 1;
 }
 
 .timeline-bar span {

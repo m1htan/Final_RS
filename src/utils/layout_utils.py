@@ -21,6 +21,7 @@ _FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
         "duration": 24.0,
         "score": 86.0,
         "visibility": 100.0,
+        "progress": 68.0,
     },
     {
         "title": "Assessed Talent Patterns",
@@ -28,6 +29,7 @@ _FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
         "duration": 18.0,
         "score": 74.0,
         "visibility": 92.0,
+        "progress": 54.0,
     },
     {
         "title": "TopTalent Insights",
@@ -35,6 +37,7 @@ _FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
         "duration": 20.0,
         "score": 68.0,
         "visibility": 88.0,
+        "progress": 49.0,
     },
     {
         "title": "System Integrations Fundamentals",
@@ -42,6 +45,7 @@ _FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
         "duration": 22.0,
         "score": 64.0,
         "visibility": 84.0,
+        "progress": 42.0,
     },
     {
         "title": "Capacity Planning Essentials",
@@ -49,6 +53,7 @@ _FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
         "duration": 16.0,
         "score": 59.0,
         "visibility": 80.0,
+        "progress": 37.0,
     },
 ]
 
@@ -570,32 +575,74 @@ def _estimate_span(hours: Optional[float]) -> int:
 
 def _prepare_home_modules(recs_df: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
     modules: List[Dict[str, Any]] = []
+    seen_titles = set()
     if recs_df is not None and not recs_df.empty:
-        for index, record in enumerate(recs_df.to_dict(orient="records"), start=1):
-            duration = _coerce_float(record.get("duration_hours"))
-            raw_score = _coerce_float(record.get("score"))
-            if raw_score is None:
-                score_pct = 0.0
-            elif raw_score > 1.0:
-                score_pct = max(0.0, min(raw_score, 100.0))
-            else:
-                score_pct = max(0.0, min(raw_score * 100.0, 100.0))
+        module_position = 0
+        for record in recs_df.to_dict(orient="records"):
+            title = (
+                record.get("course_name")
+                or record.get("course_title")
+                or f"Learning module {len(modules) + 1}"
+            )
+            normalized_title = re.sub(r"\s+", " ", str(title)).strip().lower()
+            if normalized_title in seen_titles:
+                continue
+            seen_titles.add(normalized_title)
 
-            visibility = max(60.0, score_pct + 10.0 + index * 4.0)
+            module_position += 1
+            duration = _coerce_float(record.get("duration_hours"))
+
+            raw_match = _coerce_float(record.get("score"))
+            if raw_match is None:
+                match_pct = 0.0
+            elif raw_match > 1.0:
+                match_pct = max(0.0, min(raw_match, 100.0))
+            else:
+                match_pct = max(0.0, min(raw_match * 100.0, 100.0))
+
+            raw_progress_candidates = [
+                record.get("progress"),
+                record.get("completion_rate"),
+                record.get("completion_percentage"),
+                record.get("progress_percent"),
+            ]
+            progress_pct: Optional[float] = None
+            for candidate in raw_progress_candidates:
+                value = _coerce_float(candidate)
+                if value is None:
+                    continue
+                progress_pct = value * 100.0 if 0.0 <= value <= 1.0 else value
+                break
+            if progress_pct is None:
+                progress_pct = min(92.0, 35.0 + (module_position - 1) * 9.0)
+            progress_pct = max(0.0, min(progress_pct, 100.0))
+
+            visibility_value = _coerce_float(record.get("visibility"))
+            if visibility_value is None:
+                visibility_value = max(65.0, progress_pct + 8.0)
+
             modules.append(
                 {
-                    "title": record.get("course_name")
-                    or record.get("course_title")
-                    or f"Learning module {index}",
+                    "title": title,
                     "provider": record.get("provider") or "—",
                     "duration": duration,
-                    "score": score_pct,
-                    "visibility": min(100.0, visibility),
+                    "score": match_pct,
+                    "visibility": min(100.0, visibility_value),
+                    "progress": progress_pct,
                 }
             )
 
     if not modules:
         modules = [module.copy() for module in _FALLBACK_HOME_MODULES]
+    elif len(modules) < 6:
+        for fallback in _FALLBACK_HOME_MODULES:
+            if len(modules) >= 6:
+                break
+            normalized_title = re.sub(r"\s+", " ", str(fallback.get("title", ""))).strip().lower()
+            if normalized_title in seen_titles:
+                continue
+            seen_titles.add(normalized_title)
+            modules.append(fallback.copy())
 
     return modules[:6]
 
@@ -647,9 +694,9 @@ def show_home_dashboard(user_id: str, recs_df: Optional[pd.DataFrame]) -> None:
 
     progress_rows: List[str] = []
     for idx, module in enumerate(modules, start=1):
-        score = _coerce_float(module.get("score")) or 0.0
-        visibility = _coerce_float(module.get("visibility")) or (score + 12.0)
-        score_display = max(0.0, min(score, 100.0))
+        progress_value = _coerce_float(module.get("progress")) or 0.0
+        visibility = _coerce_float(module.get("visibility")) or (progress_value + 12.0)
+        progress_display = max(0.0, min(progress_value, 100.0))
         visibility_display = int(round(max(0.0, min(visibility, 100.0))))
         progress_rows.append(
             dedent(
@@ -660,9 +707,9 @@ def show_home_dashboard(user_id: str, recs_df: Optional[pd.DataFrame]) -> None:
                         <span class="progress-provider">{escape(str(module.get('provider', '—')))}</span>
                     </div>
                     <div class="progress-meter">
-                        <div class="progress-fill" style="width: {score_display:.0f}%;"></div>
+                        <div class="progress-fill" style="width: {progress_display:.0f}%;"></div>
                     </div>
-                    <div class="progress-value">{score_display:.0f}%</div>
+                    <div class="progress-value">{progress_display:.0f}%</div>
                     <div class="progress-visibility">{visibility_display}% visibility</div>
                 </div>
                 """
