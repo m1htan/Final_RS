@@ -2,6 +2,7 @@ import base64
 import re
 from html import escape
 from pathlib import Path
+from collections import Counter
 from typing import Iterable, List, Optional, Tuple
 from textwrap import dedent
 
@@ -495,25 +496,169 @@ def show_job_detail(job: Optional[pd.Series]) -> None:
     st.markdown(detail_html, unsafe_allow_html=True)
 
 
-def show_course_cards(recs_df: pd.DataFrame) -> None:
-    """Render learning recommendations as friendly cards."""
+def _format_hours(hours: Optional[float]) -> str:
+    if hours is None:
+        return "—"
+    if hours < 1:
+        minutes = int(round(hours * 60))
+        return f"{minutes} min"
+    if hours.is_integer():
+        return f"{int(hours)} h"
+    return f"{hours:.1f} h"
 
-    for _, course in recs_df.iterrows():
-        taught = _render_tags(_safe_split(course.get("skills_taught", "")))
-        st.markdown(
-            f"""
-            <div class="card">
-                <h4>{course.get('course_name', 'Untitled course')}</h4>
-                <p><strong>Provider:</strong> {course.get('provider', 'N/A')}</p>
-                <p><strong>Duration:</strong> {course.get('duration_hours', 'N/A')} hours</p>
-                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} / 5</p>
-                <p>You'll sharpen these skills:</p>
-                <div class="tag-list">{taught or '<span class="pill">Skills unavailable</span>'}</div>
-                <div class="card-footer">
-                    <span>Match score</span>
-                    <span>{float(course.get('score', 0.0)) * 100:.0f}% fit</span>
+
+def _format_rating(value: Optional[float]) -> str:
+    if value is None:
+        return "—"
+    return f"{value:.1f} / 5"
+
+
+def show_course_cards(recs_df: pd.DataFrame) -> None:
+    """Render learning recommendations using the refreshed learning path layout."""
+
+    if recs_df is None or recs_df.empty:
+        return
+
+    scores = (
+        pd.to_numeric(recs_df.get("score", pd.Series(dtype=float)), errors="coerce")
+        .fillna(0.0)
+    )
+    durations = pd.to_numeric(
+        recs_df.get("duration_hours", pd.Series(dtype=float)), errors="coerce"
+    )
+
+    total_courses = int(len(recs_df))
+    total_hours = float(durations.dropna().sum()) if not durations.empty else 0.0
+    avg_match = float(scores.mean()) * 100 if not scores.empty else 0.0
+
+    skill_counter: Counter[str] = Counter()
+    for value in recs_df.get("skills_taught", []):
+        for skill in _safe_split(value):
+            skill_counter[skill] += 1
+    top_skills = [skill for skill, _ in skill_counter.most_common(3)]
+
+    hero_skills = (
+        "".join(f"<span class='hero-chip'>{escape(skill)}</span>" for skill in top_skills)
+        if top_skills
+        else "<span class='hero-chip muted'>Skills will appear here</span>"
+    )
+
+    hero_html = dedent(
+        f"""
+        <section class="learning-hero" id="learning-path">
+            <div class="hero-copy">
+                <p class="hero-eyebrow">Guided learning journey</p>
+                <h2>My Learning Path</h2>
+                <p class="hero-description">Focus on these courses to close the most important skill gaps identified in your profile.</p>
+                <div class="hero-chip-row">{hero_skills}</div>
+            </div>
+            <div class="hero-metrics">
+                <div class="hero-metric">
+                    <span class="metric-label">Courses recommended</span>
+                    <span class="metric-value">{total_courses}</span>
+                    <span class="metric-caption">Personalised for you</span>
+                </div>
+                <div class="hero-metric">
+                    <span class="metric-label">Estimated effort</span>
+                    <span class="metric-value">{_format_hours(total_hours)}</span>
+                    <span class="metric-caption">Across all courses</span>
+                </div>
+                <div class="hero-metric">
+                    <span class="metric-label">Average match</span>
+                    <span class="metric-value">{avg_match:.0f}%</span>
+                    <span class="metric-caption">Alignment to your target role</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
+        </section>
+        """
+    ).strip()
+
+    st.markdown(hero_html, unsafe_allow_html=True)
+
+    cards: List[str] = []
+    for index, course in enumerate(recs_df.to_dict(orient="records"), start=1):
+        taught = _render_tags(_safe_split(course.get("skills_taught", "")))
+        score = 0.0
+        raw_score = course.get("score")
+        try:
+            score = float(raw_score) * 100
+        except (TypeError, ValueError):
+            score = 0.0
+
+        try:
+            duration_val = float(course.get("duration_hours"))
+        except (TypeError, ValueError):
+            duration_val = None
+
+        try:
+            rating_val = float(course.get("rating"))
+        except (TypeError, ValueError):
+            rating_val = None
+
+        provider = str(course.get("provider") or "Unknown provider")
+        difficulty = str(
+            course.get("difficulty_level")
+            or course.get("difficulty")
+            or "—"
         )
+        summary_copy = str(
+            course.get(
+                "course_summary",
+                "Designed to strengthen this capability based on your current readiness levels.",
+            )
+        )
+
+        cards.append(
+            dedent(
+                f"""
+                <article class="learning-card">
+                    <div class="learning-card-header">
+                        <div class="learning-card-title">
+                            <span class="card-eyebrow">Path module {index}</span>
+                            <h3>{course.get('course_name', 'Untitled course')}</h3>
+                            <p class="card-meta">{escape(provider)} • {escape(str(difficulty))}</p>
+                        </div>
+                        <div class="learning-card-progress">
+                            <span class="progress-label">Match alignment</span>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: {min(max(score, 0.0), 100.0):.0f}%"></div>
+                            </div>
+                            <span class="progress-value">{score:.0f}%</span>
+                        </div>
+                    </div>
+                    <p class="learning-card-description">{escape(summary_copy)}</p>
+                    <div class="learning-card-grid">
+                        <div class="grid-item">
+                            <span class="grid-label">Duration</span>
+                            <span class="grid-value">{_format_hours(duration_val)}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Difficulty</span>
+                            <span class="grid-value">{escape(str(difficulty))}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Provider</span>
+                            <span class="grid-value">{escape(provider)}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Rating</span>
+                            <span class="grid-value">{_format_rating(rating_val)}</span>
+                        </div>
+                    </div>
+                    <div class="learning-card-skills">
+                        <span class="grid-label">Skills you'll build</span>
+                        <div class="tag-list">{taught or '<span class="pill muted">Skill data unavailable</span>'}</div>
+                    </div>
+                    <div class="learning-card-actions">
+                        <button type="button" class="ghost-button">Add to planner</button>
+                        <button type="button" class="primary-button">Continue</button>
+                    </div>
+                </article>
+                """
+            ).strip()
+        )
+
+    st.markdown(
+        f"<section class='learning-path-list'>{''.join(cards)}</section>",
+        unsafe_allow_html=True,
+    )
