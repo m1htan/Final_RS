@@ -689,7 +689,7 @@ button[data-testid="baseButton-secondary"] {
     gap: 4px;
 }
 
-.job-card-link {
+.job-card-title .job-card-link {
     display: inline-flex;
     align-items: center;
     gap: 10px;
@@ -697,10 +697,11 @@ button[data-testid="baseButton-secondary"] {
     font-weight: 600;
     color: #111827;
     text-decoration: none;
+    cursor: pointer;
     transition: color 0.2s ease;
 }
 
-.job-card-link::after {
+.job-card-title .job-card-link::after {
     content: "\2192";
     font-size: 18px;
     opacity: 0;
@@ -708,16 +709,18 @@ button[data-testid="baseButton-secondary"] {
     transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-.job-card-link:hover {
+.job-card-title .job-card-link:hover,
+.job-card-title .job-card-link:focus {
     color: #2563eb;
 }
 
-.job-card-link:hover::after {
+.job-card-title .job-card-link:hover::after,
+.job-card.is-active .job-card-title .job-card-link::after {
     opacity: 1;
     transform: translateX(0);
 }
 
-.job-card.is-active .job-card-link {
+.job-card.is-active .job-card-title .job-card-link {
     color: #2563eb;
 }
 

@@ -28,9 +28,6 @@ if "user_id" not in st.session_state:
 if "selected_job_id" not in st.session_state:
     st.session_state.selected_job_id = None
 
-if "job_click_nonce" not in st.session_state:
-    st.session_state.job_click_nonce = None
-
 if not st.session_state.user_id:
     st.markdown("<h3 class='centered-text'>Login to your account</h3>", unsafe_allow_html=True)
     st.markdown("""
@@ -47,7 +44,6 @@ if not st.session_state.user_id:
         if user_id and user_id in data["employee_df"]["user_id"].values:
             st.session_state.user_id = user_id
             st.session_state.selected_job_id = None
-            st.session_state.job_click_nonce = None
             st.success(f"Welcome back, {user_id}! Redirecting...")
             st.rerun()
         else:
@@ -59,7 +55,6 @@ with col2:
     if st.button("Logout"):
         st.session_state.user_id = None
         st.session_state.selected_job_id = None
-        st.session_state.job_click_nonce = None
         st.rerun()
 
 user_id = st.session_state.user_id
@@ -175,13 +170,11 @@ with tabs[1]:
             with back_col:
                 if st.button("← Back to job list", use_container_width=True):
                     st.session_state["selected_job_id"] = None
-                    st.session_state["job_click_nonce"] = None
                     st.rerun()
 
             show_job_detail(selected_row)
     else:
         st.session_state.selected_job_id = None
-        st.session_state.job_click_nonce = None
         st.info("No job match data available for this user.")
 
 with tabs[2]:
