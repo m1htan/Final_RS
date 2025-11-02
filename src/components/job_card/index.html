@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: "Source Sans Pro", "Segoe UI", sans-serif;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: "Source Sans Pro", "Segoe UI", sans-serif;
+        }
+        .job-card {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 18px;
+            align-items: flex-start;
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 20px 22px;
+            box-shadow: 0 10px 20px -12px rgba(15, 23, 42, 0.25);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .job-card.is-active {
+            border-color: #2563eb;
+            box-shadow: 0 14px 28px -14px rgba(37, 99, 235, 0.45);
+        }
+        .job-card-leading {
+            width: 54px;
+            height: 54px;
+            border-radius: 16px;
+            background: linear-gradient(140deg, #2563eb, #4f46e5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 20px;
+        }
+        .job-card-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .job-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .job-card-title {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .job-card-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .job-card-link::after {
+            content: "\2192";
+            font-size: 18px;
+            opacity: 0;
+            transform: translateX(-6px);
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        .job-card-link:hover,
+        .job-card-link:focus {
+            color: #2563eb;
+        }
+        .job-card-link:hover::after,
+        .job-card.is-active .job-card-link::after {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .job-card.is-active .job-card-link {
+            color: #2563eb;
+        }
+        .job-card-meta {
+            display: inline-flex;
+            gap: 10px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .job-card-meta .dot {
+            display: inline-flex;
+            align-items: center;
+        }
+        .job-card-meta .dot::before {
+            content: "\2022";
+            color: #cbd5f5;
+            font-size: 12px;
+            line-height: 1;
+        }
+        .job-card-highlights {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .pill.soft {
+            background: rgba(37, 99, 235, 0.08);
+            color: #1d4ed8;
+        }
+        .pill.muted {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .job-card-skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .job-card-skills .pill {
+            background: rgba(15, 23, 42, 0.06);
+            color: #1f2937;
+        }
+        .job-card-skills .pill.muted {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .match-chip {
+            background: rgba(16, 185, 129, 0.15);
+            color: #047857;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 6px 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/streamlit-component-lib@1.3.0/dist/index.js"></script>
+    <script>
+        const root = document.getElementById("root");
+
+        function sanitize(text) {
+            if (text === null || text === undefined) {
+                return "";
+            }
+            return String(text);
+        }
+
+        function renderCard(job, isActive, Streamlit) {
+            const activeClass = isActive ? " is-active" : "";
+            const highlights = (job.highlights || []).map((item) => `<span class="pill ${item.variant}">${item.label}</span>`).join("");
+            const skills = job.skills_html || "";
+
+            root.innerHTML = `
+                <article class="job-card${activeClass}" data-job-id="${sanitize(job.id)}">
+                    <div class="job-card-leading" aria-hidden="true">${sanitize(job.initials)}</div>
+                    <div class="job-card-content">
+                        <div class="job-card-header">
+                            <div class="job-card-title">
+                                <a class="job-card-link" href="#" data-job-id="${sanitize(job.id)}" title="View job details">${sanitize(job.title)}</a>
+                            </div>
+                            <span class="match-chip">${sanitize(job.match_label)}</span>
+                        </div>
+                        <div class="job-card-meta">
+                            <span>${sanitize(job.company)}</span>
+                            <span class="dot"></span>
+                            <span>${sanitize(job.location)}</span>
+                        </div>
+                        <div class="job-card-highlights">${highlights}</div>
+                        <div class="job-card-skills" aria-label="Key skills">${skills}</div>
+                    </div>
+                </article>
+            `;
+
+            const link = root.querySelector(".job-card-link");
+            if (link) {
+                link.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    if (Streamlit && Streamlit.setComponentValue) {
+                        Streamlit.setComponentValue(job.id);
+                    }
+                });
+            }
+
+            if (Streamlit && Streamlit.setFrameHeight) {
+                Streamlit.setFrameHeight(document.body.scrollHeight + 12);
+            }
+        }
+
+        function boot() {
+            const componentLib = window.streamlitComponentLib;
+            if (!componentLib || !componentLib.Streamlit) {
+                window.setTimeout(boot, 50);
+                return;
+            }
+
+            const Streamlit = componentLib.Streamlit;
+
+            const onRender = (event) => {
+                const data = event.detail || {};
+                const args = data.args || {};
+                renderCard(args.job || {}, args.is_active, Streamlit);
+            };
+
+            Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, onRender);
+            Streamlit.setComponentReady();
+            Streamlit.setFrameHeight(document.body.scrollHeight + 12);
+        }
+
+        boot();
+    </script>
+</body>
+</html>
