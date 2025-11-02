@@ -164,10 +164,10 @@
             return String(text);
         }
 
-        function renderCard(job, isActive) {
+        function renderCard(job, isActive, Streamlit) {
             const activeClass = isActive ? " is-active" : "";
             const highlights = (job.highlights || []).map((item) => `<span class="pill ${item.variant}">${item.label}</span>`).join("");
-            const skills = (job.skills_html || "");
+            const skills = job.skills_html || "";
 
             root.innerHTML = `
                 <article class="job-card${activeClass}" data-job-id="${sanitize(job.id)}">
@@ -194,35 +194,36 @@
             if (link) {
                 link.addEventListener("click", (event) => {
                     event.preventDefault();
-                    if (window.Streamlit && window.Streamlit.setComponentValue) {
-                        window.Streamlit.setComponentValue(job.id);
+                    if (Streamlit && Streamlit.setComponentValue) {
+                        Streamlit.setComponentValue(job.id);
                     }
                 });
             }
 
-            if (window.Streamlit && window.Streamlit.setFrameHeight) {
-                window.Streamlit.setFrameHeight(document.body.scrollHeight + 12);
+            if (Streamlit && Streamlit.setFrameHeight) {
+                Streamlit.setFrameHeight(document.body.scrollHeight + 12);
             }
         }
 
-        function onRender(event) {
-            const data = event.detail || {};
-            const args = data.args || {};
-            renderCard(args.job || {}, args.is_active);
-        }
-
-        window.Streamlit = window.Streamlit || {};
-        const boot = () => {
-            if (window.Streamlit && window.Streamlit.events) {
-                window.Streamlit.setComponentReady();
-                window.Streamlit.events.addEventListener(window.Streamlit.RENDER_EVENT, onRender);
-                if (window.Streamlit.setFrameHeight) {
-                    window.Streamlit.setFrameHeight(document.body.scrollHeight + 12);
-                }
-            } else {
+        function boot() {
+            const componentLib = window.streamlitComponentLib;
+            if (!componentLib || !componentLib.Streamlit) {
                 window.setTimeout(boot, 50);
+                return;
             }
-        };
+
+            const Streamlit = componentLib.Streamlit;
+
+            const onRender = (event) => {
+                const data = event.detail || {};
+                const args = data.args || {};
+                renderCard(args.job || {}, args.is_active, Streamlit);
+            };
+
+            Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, onRender);
+            Streamlit.setComponentReady();
+            Streamlit.setFrameHeight(document.body.scrollHeight + 12);
+        }
 
         boot();
     </script>
