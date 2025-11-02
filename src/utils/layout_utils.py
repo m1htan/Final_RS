@@ -2,7 +2,8 @@ import base64
 import re
 from html import escape
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from collections import Counter
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from textwrap import dedent
 
 import pandas as pd
@@ -12,6 +13,49 @@ import streamlit.components.v1 as components
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "images"
+
+_FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
+    {
+        "title": "Advanced Analytics Platform",
+        "provider": "SkillGraph Academy",
+        "duration": 24.0,
+        "score": 86.0,
+        "visibility": 100.0,
+        "progress": 68.0,
+    },
+    {
+        "title": "Assessed Talent Patterns",
+        "provider": "SkillGraph Academy",
+        "duration": 18.0,
+        "score": 74.0,
+        "visibility": 92.0,
+        "progress": 54.0,
+    },
+    {
+        "title": "TopTalent Insights",
+        "provider": "SkillGraph Academy",
+        "duration": 20.0,
+        "score": 68.0,
+        "visibility": 88.0,
+        "progress": 49.0,
+    },
+    {
+        "title": "System Integrations Fundamentals",
+        "provider": "SkillGraph Academy",
+        "duration": 22.0,
+        "score": 64.0,
+        "visibility": 84.0,
+        "progress": 42.0,
+    },
+    {
+        "title": "Capacity Planning Essentials",
+        "provider": "SkillGraph Academy",
+        "duration": 16.0,
+        "score": 59.0,
+        "visibility": 80.0,
+        "progress": 37.0,
+    },
+]
 
 _JOB_LINK_COMPONENT_DIR = (
     Path(__file__).resolve().parents[1]
@@ -495,25 +539,379 @@ def show_job_detail(job: Optional[pd.Series]) -> None:
     st.markdown(detail_html, unsafe_allow_html=True)
 
 
-def show_course_cards(recs_df: pd.DataFrame) -> None:
-    """Render learning recommendations as friendly cards."""
+def _format_hours(hours: Optional[float]) -> str:
+    if hours is None:
+        return "—"
+    if hours < 1:
+        minutes = int(round(hours * 60))
+        return f"{minutes} min"
+    if hours.is_integer():
+        return f"{int(hours)} h"
+    return f"{hours:.1f} h"
 
-    for _, course in recs_df.iterrows():
-        taught = _render_tags(_safe_split(course.get("skills_taught", "")))
-        st.markdown(
+
+def _format_rating(value: Optional[float]) -> str:
+    if value is None:
+        return "—"
+    return f"{value:.1f} / 5"
+
+
+def _coerce_float(value: Any) -> Optional[float]:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _estimate_span(hours: Optional[float]) -> int:
+    if hours is None or hours <= 0:
+        return 2
+    weeks = hours / 8.0
+    span = int(round(weeks))
+    return max(2, min(span, 6))
+
+
+def _prepare_home_modules(recs_df: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+    modules: List[Dict[str, Any]] = []
+    seen_titles = set()
+    if recs_df is not None and not recs_df.empty:
+        module_position = 0
+        for record in recs_df.to_dict(orient="records"):
+            title = (
+                record.get("course_name")
+                or record.get("course_title")
+                or f"Learning module {len(modules) + 1}"
+            )
+            normalized_title = re.sub(r"\s+", " ", str(title)).strip().lower()
+            if normalized_title in seen_titles:
+                continue
+            seen_titles.add(normalized_title)
+
+            module_position += 1
+            duration = _coerce_float(record.get("duration_hours"))
+
+            raw_match = _coerce_float(record.get("score"))
+            if raw_match is None:
+                match_pct = 0.0
+            elif raw_match > 1.0:
+                match_pct = max(0.0, min(raw_match, 100.0))
+            else:
+                match_pct = max(0.0, min(raw_match * 100.0, 100.0))
+
+            raw_progress_candidates = [
+                record.get("progress"),
+                record.get("completion_rate"),
+                record.get("completion_percentage"),
+                record.get("progress_percent"),
+            ]
+            progress_pct: Optional[float] = None
+            for candidate in raw_progress_candidates:
+                value = _coerce_float(candidate)
+                if value is None:
+                    continue
+                progress_pct = value * 100.0 if 0.0 <= value <= 1.0 else value
+                break
+            if progress_pct is None:
+                progress_pct = min(92.0, 35.0 + (module_position - 1) * 9.0)
+            progress_pct = max(0.0, min(progress_pct, 100.0))
+
+            visibility_value = _coerce_float(record.get("visibility"))
+            if visibility_value is None:
+                visibility_value = max(65.0, progress_pct + 8.0)
+
+            modules.append(
+                {
+                    "title": title,
+                    "provider": record.get("provider") or "—",
+                    "duration": duration,
+                    "score": match_pct,
+                    "visibility": min(100.0, visibility_value),
+                    "progress": progress_pct,
+                }
+            )
+
+    if not modules:
+        modules = [module.copy() for module in _FALLBACK_HOME_MODULES]
+    elif len(modules) < 6:
+        for fallback in _FALLBACK_HOME_MODULES:
+            if len(modules) >= 6:
+                break
+            normalized_title = re.sub(r"\s+", " ", str(fallback.get("title", ""))).strip().lower()
+            if normalized_title in seen_titles:
+                continue
+            seen_titles.add(normalized_title)
+            modules.append(fallback.copy())
+
+    return modules[:6]
+
+
+def show_home_dashboard(user_id: str, recs_df: Optional[pd.DataFrame]) -> None:
+    modules = _prepare_home_modules(recs_df)
+    months = ["September", "October", "November", "December"]
+
+    month_header = "".join(
+        dedent(
             f"""
-            <div class="card">
-                <h4>{course.get('course_name', 'Untitled course')}</h4>
-                <p><strong>Provider:</strong> {course.get('provider', 'N/A')}</p>
-                <p><strong>Duration:</strong> {course.get('duration_hours', 'N/A')} hours</p>
-                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} / 5</p>
-                <p>You'll sharpen these skills:</p>
-                <div class="tag-list">{taught or '<span class="pill">Skills unavailable</span>'}</div>
-                <div class="card-footer">
-                    <span>Match score</span>
-                    <span>{float(course.get('score', 0.0)) * 100:.0f}% fit</span>
+            <div class="timeline-month" style="grid-column: {idx * 4 + 1} / span 4;">
+                <span class="month-name">{month}</span>
+                <div class="month-weeks"><span>W1</span><span>W2</span><span>W3</span><span>W4</span></div>
+            </div>
+            """
+        ).strip()
+        for idx, month in enumerate(months)
+    )
+
+    timeline_rows: List[str] = []
+    start_column = 1
+    for idx, module in enumerate(modules, start=1):
+        span = _estimate_span(_coerce_float(module.get("duration")))
+        if start_column + span > 17:
+            start_column = 1
+        title = escape(str(module.get("title", f"Module {idx}")))
+        provider = escape(str(module.get("provider", "—")))
+        duration_display = _format_hours(_coerce_float(module.get("duration")))
+        timeline_rows.append(
+            dedent(
+                f"""
+                <div class="timeline-row">
+                    <div class="timeline-label">
+                        <span class="timeline-eyebrow">Path module {idx}</span>
+                        <span class="timeline-title">{title}</span>
+                        <span class="timeline-provider">{provider} • {duration_display}</span>
+                    </div>
+                    <div class="timeline-track">
+                        <div class="timeline-bar" style="grid-column: {start_column} / span {span};">
+                            <span>{title}</span>
+                        </div>
+                    </div>
+                </div>
+                """
+            ).strip()
+        )
+        start_column += span
+
+    progress_rows: List[str] = []
+    for idx, module in enumerate(modules, start=1):
+        progress_value = _coerce_float(module.get("progress")) or 0.0
+        visibility = _coerce_float(module.get("visibility")) or (progress_value + 12.0)
+        progress_display = max(0.0, min(progress_value, 100.0))
+        visibility_display = int(round(max(0.0, min(visibility, 100.0))))
+        progress_rows.append(
+            dedent(
+                f"""
+                <div class="progress-row">
+                    <div class="progress-info">
+                        <span class="progress-name">{escape(str(module.get('title', f'Module {idx}')))}</span>
+                        <span class="progress-provider">{escape(str(module.get('provider', '—')))}</span>
+                    </div>
+                    <div class="progress-meter">
+                        <div class="progress-fill" style="width: {progress_display:.0f}%;"></div>
+                    </div>
+                    <div class="progress-value">{progress_display:.0f}%</div>
+                    <div class="progress-visibility">{visibility_display}% visibility</div>
+                </div>
+                """
+            ).strip()
+        )
+
+    dashboard_html = dedent(
+        f"""
+        <section class="home-dashboard">
+            <header class="home-header">
+                <div class="home-header-copy">
+                    <h2>Growth planner</h2>
+                    <p>Visualise your personalised learning path after logging in.</p>
+                </div>
+                <div class="home-header-search">
+                    <span class="search-icon"></span>
+                    <input type="text" placeholder="Search planner" />
+                </div>
+                <div class="home-header-chip">
+                    <span class="chip-label">User</span>
+                    <span class="chip-value">{escape(user_id)}</span>
+                </div>
+            </header>
+            <div class="home-grid">
+                <article class="timeline-card card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Timeline view</h3>
+                            <p class="card-subtitle">Track how each recommended module stacks across the upcoming months.</p>
+                        </div>
+                        <div class="timeline-legend">
+                            <span class="legend-pill">In progress</span>
+                            <span class="legend-pill upcoming">Upcoming</span>
+                        </div>
+                    </div>
+                    <div class="timeline-month-header">{month_header}</div>
+                    <div class="timeline-list">{''.join(timeline_rows)}</div>
+                </article>
+                <article class="progress-card card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Progress tracking</h3>
+                            <p class="card-subtitle">Monitor completion velocity and visibility across your modules.</p>
+                        </div>
+                        <button type="button" class="ghost-button small">View details</button>
+                    </div>
+                    <div class="progress-list">{''.join(progress_rows)}</div>
+                </article>
+            </div>
+        </section>
+        """
+    ).strip()
+
+    st.markdown(dashboard_html, unsafe_allow_html=True)
+
+
+def show_course_cards(recs_df: pd.DataFrame) -> None:
+    """Render learning recommendations using the refreshed learning path layout."""
+
+    if recs_df is None or recs_df.empty:
+        return
+
+    scores = (
+        pd.to_numeric(recs_df.get("score", pd.Series(dtype=float)), errors="coerce")
+        .fillna(0.0)
+    )
+    durations = pd.to_numeric(
+        recs_df.get("duration_hours", pd.Series(dtype=float)), errors="coerce"
+    )
+
+    total_courses = int(len(recs_df))
+    total_hours = float(durations.dropna().sum()) if not durations.empty else 0.0
+    avg_match = float(scores.mean()) * 100 if not scores.empty else 0.0
+
+    skill_counter: Counter[str] = Counter()
+    for value in recs_df.get("skills_taught", []):
+        for skill in _safe_split(value):
+            skill_counter[skill] += 1
+    top_skills = [skill for skill, _ in skill_counter.most_common(3)]
+
+    hero_skills = (
+        "".join(f"<span class='hero-chip'>{escape(skill)}</span>" for skill in top_skills)
+        if top_skills
+        else "<span class='hero-chip muted'>Skills will appear here</span>"
+    )
+
+    hero_html = dedent(
+        f"""
+        <section class="learning-hero" id="learning-path">
+            <div class="hero-copy">
+                <p class="hero-eyebrow">Guided learning journey</p>
+                <h2>My Learning Path</h2>
+                <p class="hero-description">Focus on these courses to close the most important skill gaps identified in your profile.</p>
+                <div class="hero-chip-row">{hero_skills}</div>
+            </div>
+            <div class="hero-metrics">
+                <div class="hero-metric">
+                    <span class="metric-label">Courses recommended</span>
+                    <span class="metric-value">{total_courses}</span>
+                    <span class="metric-caption">Personalised for you</span>
+                </div>
+                <div class="hero-metric">
+                    <span class="metric-label">Estimated effort</span>
+                    <span class="metric-value">{_format_hours(total_hours)}</span>
+                    <span class="metric-caption">Across all courses</span>
+                </div>
+                <div class="hero-metric">
+                    <span class="metric-label">Average match</span>
+                    <span class="metric-value">{avg_match:.0f}%</span>
+                    <span class="metric-caption">Alignment to your target role</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
+        </section>
+        """
+    ).strip()
+
+    st.markdown(hero_html, unsafe_allow_html=True)
+
+    cards: List[str] = []
+    for index, course in enumerate(recs_df.to_dict(orient="records"), start=1):
+        taught = _render_tags(_safe_split(course.get("skills_taught", "")))
+        score = 0.0
+        raw_score = course.get("score")
+        try:
+            score = float(raw_score) * 100
+        except (TypeError, ValueError):
+            score = 0.0
+
+        try:
+            duration_val = float(course.get("duration_hours"))
+        except (TypeError, ValueError):
+            duration_val = None
+
+        try:
+            rating_val = float(course.get("rating"))
+        except (TypeError, ValueError):
+            rating_val = None
+
+        provider = str(course.get("provider") or "Unknown provider")
+        difficulty = str(
+            course.get("difficulty_level")
+            or course.get("difficulty")
+            or "—"
         )
+        summary_copy = str(
+            course.get(
+                "course_summary",
+                "Designed to strengthen this capability based on your current readiness levels.",
+            )
+        )
+
+        cards.append(
+            dedent(
+                f"""
+                <article class="learning-card">
+                    <div class="learning-card-header">
+                        <div class="learning-card-title">
+                            <span class="card-eyebrow">Path module {index}</span>
+                            <h3>{course.get('course_name', 'Untitled course')}</h3>
+                            <p class="card-meta">{escape(provider)} • {escape(str(difficulty))}</p>
+                        </div>
+                        <div class="learning-card-progress">
+                            <span class="progress-label">Match alignment</span>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: {min(max(score, 0.0), 100.0):.0f}%"></div>
+                            </div>
+                            <span class="progress-value">{score:.0f}%</span>
+                        </div>
+                    </div>
+                    <p class="learning-card-description">{escape(summary_copy)}</p>
+                    <div class="learning-card-grid">
+                        <div class="grid-item">
+                            <span class="grid-label">Duration</span>
+                            <span class="grid-value">{_format_hours(duration_val)}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Difficulty</span>
+                            <span class="grid-value">{escape(str(difficulty))}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Provider</span>
+                            <span class="grid-value">{escape(provider)}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Rating</span>
+                            <span class="grid-value">{_format_rating(rating_val)}</span>
+                        </div>
+                    </div>
+                    <div class="learning-card-skills">
+                        <span class="grid-label">Skills you'll build</span>
+                        <div class="tag-list">{taught or '<span class="pill muted">Skill data unavailable</span>'}</div>
+                    </div>
+                    <div class="learning-card-actions">
+                        <button type="button" class="ghost-button">Add to planner</button>
+                        <button type="button" class="primary-button">Continue</button>
+                    </div>
+                </article>
+                """
+            ).strip()
+        )
+
+    st.markdown(
+        f"<section class='learning-path-list'>{''.join(cards)}</section>",
+        unsafe_allow_html=True,
+    )
