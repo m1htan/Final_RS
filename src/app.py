@@ -185,8 +185,6 @@ with tabs[1]:
         st.info("No job match data available for this user.")
 
 with tabs[2]:
-    st.subheader("Recommended Courses to Close Skill Gap")
-    st.markdown("<div id='learning-path'></div>", unsafe_allow_html=True)
     recs = recommend_for_user(data, user_id)
     if recs is not None and not recs.empty:
         show_course_cards(recs)
