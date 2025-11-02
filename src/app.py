@@ -2,6 +2,7 @@ import streamlit as st
 from utils.recommender import load_model, get_user_info, top_jobs_for_user, recommend_for_user
 from utils.layout_utils import (
     show_course_cards,
+    show_home_dashboard,
     show_job_cards,
     show_job_detail,
     show_profile_card,
@@ -64,11 +65,18 @@ with col2:
 
 user_id = st.session_state.user_id
 st.markdown(f"### Hello, {user_id}!")
-st.info("Explore the tabs below to review your profile, discover matching roles, and close any skill gaps with curated courses.")
+st.info(
+    "Explore the tabs below to review your profile, discover matching roles, and close any skill gaps with curated courses."
+)
 
-tabs = st.tabs(["Profile", "Job Match", "Learning Path"])
+recommendations = recommend_for_user(data, user_id)
+
+tabs = st.tabs(["Home", "Profile", "Job Match", "Learning Path"])
 
 with tabs[0]:
+    show_home_dashboard(user_id, recommendations)
+
+with tabs[1]:
     st.subheader("Your Profile")
     user = get_user_info(data, user_id)
     if user is not None:
@@ -76,7 +84,7 @@ with tabs[0]:
     else:
         st.warning("User not found in dataset.")
 
-with tabs[1]:
+with tabs[2]:
     st.markdown(
         """
         <section class="job-match-hero" id="job-match">
@@ -184,11 +192,8 @@ with tabs[1]:
         st.session_state.job_click_nonce = None
         st.info("No job match data available for this user.")
 
-with tabs[2]:
-    st.subheader("Recommended Courses to Close Skill Gap")
-    st.markdown("<div id='learning-path'></div>", unsafe_allow_html=True)
-    recs = recommend_for_user(data, user_id)
-    if recs is not None and not recs.empty:
-        show_course_cards(recs)
+with tabs[3]:
+    if recommendations is not None and not recommendations.empty:
+        show_course_cards(recommendations)
     else:
         st.info("No learning recommendations available yet.")
