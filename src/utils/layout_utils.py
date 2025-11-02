@@ -42,6 +42,75 @@ def _image_as_data_uri(path: Path) -> Optional[str]:
     return f"data:image/{path.suffix.lstrip('.')};base64,{encoded}"
 
 
+_JOB_LINK_LISTENER_SNIPPET = """
+<script>
+(function () {
+    if (window.__jobLinkListenerAttached) {
+        return;
+    }
+    window.__jobLinkListenerAttached = true;
+
+    function markComponentReady() {
+        if (window.Streamlit && window.Streamlit.setComponentReady) {
+            window.Streamlit.setComponentReady();
+            if (window.Streamlit.setFrameHeight) {
+                window.Streamlit.setFrameHeight(0);
+            }
+        } else {
+            window.setTimeout(markComponentReady, 40);
+        }
+    }
+
+    function dispatchSelection(jobId) {
+        function trySend() {
+            if (window.Streamlit && window.Streamlit.setComponentValue) {
+                const payload = jobId + "::" + String(Date.now());
+                window.Streamlit.setComponentValue(payload);
+            } else {
+                window.setTimeout(trySend, 40);
+            }
+        }
+        trySend();
+    }
+
+    const parentDocument = window.parent.document;
+
+    parentDocument.addEventListener(
+        "click",
+        function (event) {
+            let node = event.target;
+            if (!node) {
+                return;
+            }
+
+            if (window.Node && node.nodeType === window.Node.TEXT_NODE) {
+                node = node.parentElement;
+            }
+
+            if (!node) {
+                return;
+            }
+
+            const anchor = node.closest ? node.closest(".job-card-link") : null;
+            if (!anchor) {
+                return;
+            }
+
+            event.preventDefault();
+            const jobId = anchor.getAttribute("data-job-id");
+            if (jobId) {
+                dispatchSelection(jobId);
+            }
+        },
+        true
+    );
+
+    markComponentReady();
+})();
+</script>
+"""
+
+
 def _get_profile_image(user_id: str) -> Optional[str]:
     if not user_id:
         return None
@@ -491,7 +560,7 @@ def show_course_cards(recs_df: pd.DataFrame) -> None:
                 <h4>{course.get('course_name', 'Untitled course')}</h4>
                 <p><strong>Provider:</strong> {course.get('provider', 'N/A')}</p>
                 <p><strong>Duration:</strong> {course.get('duration_hours', 'N/A')} hours</p>
-                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} ⭐</p>
+                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} / 5</p>
                 <p>You'll sharpen these skills:</p>
                 <div class="tag-list">{taught or '<span class="pill">Skills unavailable</span>'}</div>
                 <div class="card-footer">
