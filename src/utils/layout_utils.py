@@ -217,7 +217,7 @@ def show_profile_card(user: dict) -> None:
 
 
 def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
-    """Render job recommendations as modern cards with linked titles."""
+    """Render job recommendations as modern cards with inline detail (no page reload, same UI)."""
 
     def _job_identifier(row: pd.Series, fallback: int) -> str:
         for key in ("jid", "job_id", "id"):
@@ -243,15 +243,9 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
         job_title = escape(str(raw_job_title))
         company = escape(str(row.get("company") or "Unknown company"))
         location = escape(str(row.get("location") or "Location not specified"))
-        employment_type = escape(
-            str(row.get("employment_type") or row.get("job_type") or "Full-time")
-        )
-        salary = escape(
-            str(row.get("salary_range") or row.get("salary") or "Salary not disclosed")
-        )
-        experience = escape(
-            str(row.get("experience_level") or row.get("level") or "All levels")
-        )
+        employment_type = escape(str(row.get("employment_type") or row.get("job_type") or "Full-time"))
+        salary = escape(str(row.get("salary_range") or row.get("salary") or "Salary not disclosed"))
+        experience = escape(str(row.get("experience_level") or row.get("level") or "All levels"))
         posted = escape(str(row.get("posted") or row.get("timeline") or "Just posted"))
 
         score = row.get("score")
@@ -262,38 +256,30 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 score_value = numeric_score * 100 if numeric_score <= 1 else numeric_score
             except (TypeError, ValueError):
                 score_value = None
-
         match_label = f"Match {score_value:.0f}%" if score_value is not None else "Match —"
 
-        skills = _render_tags(_safe_split(row.get("proj_quals", "")))
-        if not skills:
-            skills = "<span class='pill muted'>Skills unavailable</span>"
+        skills = _render_tags(_safe_split(row.get("proj_quals", ""))) or "<span class='pill muted'>Skills unavailable</span>"
 
         initials_source = row.get("company") or raw_job_title
-        initials = (
-            str(initials_source)[:1].upper()
-            if initials_source and str(initials_source).strip()
-            else "J"
-        )
+        initials = (str(initials_source)[:1].upper() if initials_source and str(initials_source).strip() else "J")
 
         card_classes = "job-card"
         if is_active:
             card_classes += " is-active"
 
-        highlights = dedent(
-            f"""
+        highlights = dedent(f"""
             <div class='job-card-highlights'>
                 <span class='pill soft'>{employment_type}</span>
                 <span class='pill soft'>{experience}</span>
                 <span class='pill muted'>{salary}</span>
                 <span class='pill muted'>{posted}</span>
             </div>
-            """
-        ).strip()
+        """).strip()
 
         job_id_str = str(job_id)
-        card_html = dedent(
-            f"""
+
+        # render card HTML
+        card_html = dedent(f"""
             <article class="{card_classes}">
                 <div class="job-card-leading">
                     <div class="job-card-badge" aria-hidden="true">{escape(initials)}</div>
@@ -301,45 +287,36 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 <div class="job-card-content">
                     <div class="job-card-header">
                         <div class="job-card-title">
-                            <a class="job-card-link" href="#job-match" data-job-id="{escape(job_id_str)}" role="link">{job_title}</a>
+                            <span class="job-card-link" style="cursor:pointer; color:#0073e6;" title="Click to view details">
+                                {job_title}
+                            </span>
                         </div>
                         <span class="match-chip">{match_label}</span>
                     </div>
                     <div class="job-card-meta">
-                        <span>{company}</span>
-                        <span class="dot"></span>
-                        <span>{location}</span>
+                        <span>{company}</span><span class="dot"></span><span>{location}</span>
                     </div>
                     {highlights}
                     <div class="job-card-skills" aria-label="Key skills">{skills}</div>
                 </div>
             </article>
-            """
-        ).strip()
+        """).strip()
 
+        # Hiển thị card
         st.markdown(card_html, unsafe_allow_html=True)
 
-    selection = job_link_listener(default=None, key="job-link-listener")
+        # Thêm nút vô hình để kích hoạt hành vi click
+        if st.button(job_title, key=f"btn_{job_id}", use_container_width=True):
+            st.session_state.selected_job_id = job_id
+            st.rerun()
 
-    if selection:
-        job_id = None
-        nonce = None
-        if isinstance(selection, dict):
-            job_id = selection.get("jobId") or selection.get("job_id") or selection.get("id")
-            nonce = selection.get("nonce")
-        elif isinstance(selection, str):
-            job_id = selection
-        else:
-            job_id = str(selection)
-
-        if job_id:
-            job_id = str(job_id)
-            last_nonce = st.session_state.get("job_click_nonce")
-            if nonce and nonce != last_nonce:
-                st.session_state["job_click_nonce"] = nonce
-                st.session_state["selected_job_id"] = job_id
-            elif not nonce and job_id != st.session_state.get("selected_job_id"):
-                st.session_state["selected_job_id"] = job_id
+        # Nếu job này đang active → hiển thị detail ngay bên dưới
+        if is_active:
+            show_job_detail(row)
+            if st.button("Hide details", key=f"hide_{job_id}", use_container_width=True):
+                st.session_state.selected_job_id = None
+                st.rerun()
+            st.markdown("---")
 
     return st.session_state.get("selected_job_id")
 
