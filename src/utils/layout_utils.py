@@ -7,6 +7,7 @@ from textwrap import dedent
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -366,6 +367,150 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
             ),
             unsafe_allow_html=True,
         )
+        return
+
+    if isinstance(job, pd.Series):
+        job_data = job.to_dict()
+    else:
+        job_data = job or {}
+
+    def _clean(value: Optional[str], fallback: str = "—") -> str:
+        if value is None:
+            return fallback
+        if isinstance(value, float) and pd.isna(value):
+            return fallback
+        text = str(value).strip()
+        return text or fallback
+
+    raw_job_title = _clean(job_data.get("job_title") or job_data.get("title"), "Untitled role")
+    raw_company = _clean(job_data.get("company"), "Unknown company")
+    job_title = escape(raw_job_title)
+    company = escape(raw_company)
+    location = escape(_clean(job_data.get("location"), "Location not specified"))
+    employment_type = escape(_clean(job_data.get("employment_type") or job_data.get("job_type"), "Full-time"))
+    salary = escape(_clean(job_data.get("salary_range") or job_data.get("salary"), "Not disclosed"))
+    experience = escape(_clean(job_data.get("experience_level") or job_data.get("level"), "All levels"))
+    start_date = escape(_clean(job_data.get("start_date"), "Immediate"))
+    end_date = escape(_clean(job_data.get("end_date"), "Open until filled"))
+
+    overview, bullets = _derive_job_highlights(job_data.get("job_desc"))
+    overview_html = f"<p>{escape(overview)}</p>" if overview else ""
+
+    responsibilities = [escape(item) for item in bullets[:4]]
+    preferred = [escape(item) for item in bullets[4:8]]
+
+    responsibilities_html = (
+        "<ul class='detail-list'>" + "".join(f"<li>{item}</li>" for item in responsibilities) + "</ul>"
+        if responsibilities
+        else "<div class='empty-copy'>Responsibilities will be shared soon.</div>"
+    )
+
+    preferred_html = (
+        "<ul class='detail-list'>" + "".join(f"<li>{item}</li>" for item in preferred) + "</ul>"
+        if preferred
+        else "<div class='empty-copy'>Preferred qualifications will be updated shortly.</div>"
+    )
+
+    qualification_tags = _render_tags(_safe_split(job_data.get("proj_quals", "")))
+    if not qualification_tags:
+        qualification_tags = "<div class='empty-copy'>This role has no specific skills listed yet.</div>"
+
+    match_score = job_data.get("score")
+    if pd.notna(match_score):
+        try:
+            match_value = float(match_score) * 100 if float(match_score) <= 1 else float(match_score)
+            match_display = f"{match_value:.0f}%"
+        except (TypeError, ValueError):
+            match_display = "—"
+    else:
+        match_display = "—"
+
+    benefits = [
+        "Competitive compensation package",
+        "Flexible work arrangements and remote-friendly culture",
+        "Comprehensive health and wellness benefits",
+    ]
+    benefits_html = "<ul class='detail-list'>" + "".join(f"<li>{escape(item)}</li>" for item in benefits) + "</ul>"
+
+    about_team = f"Join {company} to collaborate with a cross-functional team focused on delivering impactful digital experiences."
+    contact_domain = re.sub(r"[^a-z0-9]", "", raw_company.lower()) or "company"
+
+    detail_html = f"""
+    <div class="job-detail-wrapper">
+        <div class="job-detail-main">
+            <article class="detail-card">
+                <header class="detail-header">
+                    <h2>{job_title}</h2>
+                    <p>{company} • {location} • {employment_type}</p>
+                </header>
+                <section class="detail-section">
+                    <h3>Job Overview</h3>
+                    {overview_html}
+                </section>
+                <section class="detail-section">
+                    <h3>Job Responsibilities</h3>
+                    {responsibilities_html}
+                </section>
+                <section class="detail-section">
+                    <h3>Required Skills &amp; Qualifications</h3>
+                    <div class="tag-list">{qualification_tags}</div>
+                </section>
+                <section class="detail-section">
+                    <h3>Preferred Qualifications</h3>
+                    {preferred_html}
+                </section>
+                <section class="detail-section">
+                    <h3>What We Offer</h3>
+                    {benefits_html}
+                </section>
+                <section class="detail-section">
+                    <h3>About the Team</h3>
+                    <p>{about_team}</p>
+                </section>
+            </article>
+        </div>
+        <aside class="job-detail-sidebar">
+            <div class="job-summary-card">
+                <div class="summary-group">
+                    <span class="summary-label">Location</span>
+                    <span class="summary-value">{location}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Employment type</span>
+                    <span class="summary-value">{employment_type}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Experience level</span>
+                    <span class="summary-value">{experience}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Salary range</span>
+                    <span class="summary-value">{salary}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Start date</span>
+                    <span class="summary-value">{start_date}</span>
+                </div>
+                <div class="summary-group">
+                    <span class="summary-label">Closing date</span>
+                    <span class="summary-value">{end_date}</span>
+                </div>
+                <div class="summary-group highlight">
+                    <span class="summary-label">Your match score</span>
+                    <span class="summary-value score">{match_display}</span>
+                </div>
+                <button class="apply-button" type="button">Apply now</button>
+            </div>
+            <div class="sidebar-card">
+                <h4>Recruiter information</h4>
+                <p class="sidebar-text">Have questions? Reach out to the talent team for more details about the role and interview process.</p>
+                <div class="contact-chip">talent@{contact_domain}.com</div>
+            </div>
+        </aside>
+    </div>
+    """
+
+    st.markdown(detail_html, unsafe_allow_html=True)
 
     return st.session_state.get("selected_job_id")
 
@@ -555,7 +700,7 @@ def show_course_cards(recs_df: pd.DataFrame) -> None:
                 <h4>{course.get('course_name', 'Untitled course')}</h4>
                 <p><strong>Provider:</strong> {course.get('provider', 'N/A')}</p>
                 <p><strong>Duration:</strong> {course.get('duration_hours', 'N/A')} hours</p>
-                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} ⭐</p>
+                <p><strong>Rating:</strong> {course.get('rating', 'N/A')} / 5</p>
                 <p>You'll sharpen these skills:</p>
                 <div class="tag-list">{taught or '<span class="pill">Skills unavailable</span>'}</div>
                 <div class="card-footer">
