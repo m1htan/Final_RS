@@ -10,6 +10,15 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
+COMPONENTS_DIR = Path(__file__).resolve().parents[1] / "components"
+JOB_CARD_COMPONENT_DIR = COMPONENTS_DIR / "job_card"
+
+job_card_component = components.declare_component(
+    "job_card",
+    path=str(JOB_CARD_COMPONENT_DIR),
+)
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "images"
 
@@ -273,7 +282,7 @@ def show_profile_card(user: dict) -> None:
 
 
 def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
-    """Render job recommendations as modern cards with clickable titles."""
+    """Render job recommendations as modern cards with inline detail (no page reload, same UI)."""
 
     def _job_identifier(row: pd.Series, fallback: int) -> str:
         for key in ("jid", "job_id", "id"):
@@ -285,6 +294,8 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
 
     active_job_id = st.session_state.get("selected_job_id")
     active_job_id = str(active_job_id) if active_job_id is not None else None
+
+    latest_selection: Optional[str] = None
 
     for index, row in jobs_df.iterrows():
         job_id = _job_identifier(row, index)
@@ -318,7 +329,6 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
                 score_value = numeric_score * 100 if numeric_score <= 1 else numeric_score
             except (TypeError, ValueError):
                 score_value = None
-
         match_label = f"Match {score_value:.0f}%" if score_value is not None else "Match —"
 
         skills = _render_tags(_safe_split(row.get("proj_quals", "")))
@@ -332,238 +342,39 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
             else "J"
         )
 
-        card_classes = "job-card"
-        if is_active:
-            card_classes += " is-active"
-
-        highlights = dedent(
-            f"""
-            <div class='job-card-highlights'>
-                <span class='pill soft'>{employment_type}</span>
-                <span class='pill soft'>{experience}</span>
-                <span class='pill muted'>{salary}</span>
-                <span class='pill muted'>{posted}</span>
-            </div>
-            """
-        ).strip()
-
         job_id_str = str(job_id)
         safe_key = re.sub(r"[^0-9A-Za-z_-]", "_", job_id_str)
 
-        component_html = dedent(
-            f"""
-            <style>
-            :root {{
-                color-scheme: light;
-                font-family: 'Source Sans Pro', 'Segoe UI', sans-serif;
-            }}
-            * {{
-                box-sizing: border-box;
-            }}
-            body {{
-                margin: 0;
-                padding: 0;
-                background: transparent;
-                font-family: 'Source Sans Pro', 'Segoe UI', sans-serif;
-            }}
-            .job-card {{
-                display: grid;
-                grid-template-columns: auto 1fr;
-                gap: 18px;
-                align-items: flex-start;
-                width: 100%;
-                background: #ffffff;
-                border: 1px solid #e5e7eb;
-                border-radius: 18px;
-                padding: 20px 22px;
-                box-shadow: 0 10px 20px -12px rgba(15, 23, 42, 0.25);
-                transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            }}
-            .job-card.is-active {{
-                border-color: #2563eb;
-                box-shadow: 0 14px 28px -14px rgba(37, 99, 235, 0.45);
-            }}
-            .job-card-leading {{
-                width: 54px;
-                height: 54px;
-                border-radius: 16px;
-                background: linear-gradient(140deg, #2563eb, #4f46e5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #ffffff;
-                font-weight: 700;
-                font-size: 20px;
-            }}
-            .job-card-content {{
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }}
-            .job-card-header {{
-                display: flex;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 12px;
-            }}
-            .job-card-title {{
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }}
-            .job-card-link {{
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 18px;
-                font-weight: 600;
-                color: #111827;
-                text-decoration: none;
-                cursor: pointer;
-                transition: color 0.2s ease;
-            }}
-            .job-card-link::after {{
-                content: "\2192";
-                font-size: 18px;
-                opacity: 0;
-                transform: translateX(-6px);
-                transition: transform 0.2s ease, opacity 0.2s ease;
-            }}
-            .job-card-link:hover,
-            .job-card-link:focus {{
-                color: #2563eb;
-            }}
-            .job-card-link:hover::after,
-            .job-card.is-active .job-card-link::after {{
-                opacity: 1;
-                transform: translateX(0);
-            }}
-            .job-card.is-active .job-card-link {{
-                color: #2563eb;
-            }}
-            .job-card-meta {{
-                display: inline-flex;
-                gap: 10px;
-                font-size: 14px;
-                color: #6b7280;
-            }}
-            .job-card-meta .dot {{
-                display: inline-flex;
-                align-items: center;
-            }}
-            .job-card-meta .dot::before {{
-                content: "\2022";
-                color: #cbd5f5;
-                font-size: 12px;
-                line-height: 1;
-            }}
-            .job-card-highlights {{
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-            }}
-            .pill {{
-                display: inline-flex;
-                align-items: center;
-                padding: 4px 12px;
-                border-radius: 999px;
-                font-size: 13px;
-                font-weight: 500;
-            }}
-            .pill.soft {{
-                background: rgba(37, 99, 235, 0.08);
-                color: #1d4ed8;
-            }}
-            .pill.muted {{
-                background: #f3f4f6;
-                color: #6b7280;
-            }}
-            .job-card-skills {{
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-            }}
-            .job-card-skills .pill {{
-                background: rgba(15, 23, 42, 0.06);
-                color: #1f2937;
-            }}
-            .job-card-skills .pill.muted {{
-                background: #f3f4f6;
-                color: #6b7280;
-            }}
-            .match-chip {{
-                background: rgba(16, 185, 129, 0.15);
-                color: #047857;
-                border-radius: 999px;
-                font-weight: 600;
-                font-size: 13px;
-                padding: 6px 12px;
-            }}
-            </style>
-            <article class="job-card {'is-active' if is_active else ''}" data-job-id="{job_id_str}">
-                <div class="job-card-leading" aria-hidden="true">{escape(initials)}</div>
-                <div class="job-card-content">
-                    <div class="job-card-header">
-                        <div class="job-card-title">
-                            <a class="job-card-link" href="#" data-job-id="{job_id_str}" title="View job details">{job_title}</a>
-                        </div>
-                        <span class="match-chip">{match_label}</span>
-                    </div>
-                    <div class="job-card-meta">
-                        <span>{company}</span>
-                        <span class="dot"></span>
-                        <span>{location}</span>
-                    </div>
-                    {highlights}
-                    <div class="job-card-skills" aria-label="Key skills">{skills}</div>
-                </div>
-            </article>
-            <script>
-            (function() {{
-                const jobId = {job_id_str!r};
-                function ensureReady() {{
-                    if (window.Streamlit && window.Streamlit.setComponentReady) {{
-                        window.Streamlit.setComponentReady();
-                        if (window.Streamlit.setFrameHeight) {{
-                            window.Streamlit.setFrameHeight(document.body.scrollHeight + 8);
-                        }}
-                    }} else {{
-                        window.setTimeout(ensureReady, 40);
-                    }}
-                }}
-
-                function sendSelection() {{
-                    if (window.Streamlit && window.Streamlit.setComponentValue) {{
-                        window.Streamlit.setComponentValue(jobId);
-                    }}
-                }}
-
-                const link = document.querySelector('.job-card-link');
-                if (link) {{
-                    link.addEventListener('click', function(event) {{
-                        event.preventDefault();
-                        sendSelection();
-                    }});
-                }}
-
-                ensureReady();
-            }})();
-            </script>
-            """
-        ).strip()
-
-        selection = components.html(
-            component_html,
-            height=240,
+        selection = job_card_component(
+            job={
+                "id": job_id_str,
+                "initials": escape(initials),
+                "title": job_title,
+                "company": company,
+                "location": location,
+                "match_label": match_label,
+                "highlights": [
+                    {"label": employment_type, "variant": "soft"},
+                    {"label": experience, "variant": "soft"},
+                    {"label": salary, "variant": "muted"},
+                    {"label": posted, "variant": "muted"},
+                ],
+                "skills_html": skills,
+            },
+            is_active=is_active,
             key=f"job_card_component_{index}_{safe_key}",
+            default=None,
         )
 
         if selection:
-            st.session_state["selected_job_id"] = str(selection)
+            latest_selection = str(selection)
+
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+    if latest_selection is not None:
+        st.session_state["selected_job_id"] = latest_selection
 
     return st.session_state.get("selected_job_id")
-
-
 def _derive_job_highlights(description: Optional[str]) -> Tuple[str, List[str]]:
     if not description or (isinstance(description, float) and pd.isna(description)):
         return "Job overview is not available for this role yet.", []
