@@ -543,33 +543,35 @@ def show_course_cards(recs_df: pd.DataFrame) -> None:
         else "<span class='hero-chip muted'>Skills will appear here</span>"
     )
 
-    hero_html = f"""
-    <section class="learning-hero" id="learning-path">
-        <div class="hero-copy">
-            <p class="hero-eyebrow">Guided learning journey</p>
-            <h2>My Learning Path</h2>
-            <p class="hero-description">Focus on these courses to close the most important skill gaps identified in your profile.</p>
-            <div class="hero-chip-row">{hero_skills}</div>
-        </div>
-        <div class="hero-metrics">
-            <div class="hero-metric">
-                <span class="metric-label">Courses recommended</span>
-                <span class="metric-value">{total_courses}</span>
-                <span class="metric-caption">Personalised for you</span>
+    hero_html = dedent(
+        f"""
+        <section class="learning-hero" id="learning-path">
+            <div class="hero-copy">
+                <p class="hero-eyebrow">Guided learning journey</p>
+                <h2>My Learning Path</h2>
+                <p class="hero-description">Focus on these courses to close the most important skill gaps identified in your profile.</p>
+                <div class="hero-chip-row">{hero_skills}</div>
             </div>
-            <div class="hero-metric">
-                <span class="metric-label">Estimated effort</span>
-                <span class="metric-value">{_format_hours(total_hours)}</span>
-                <span class="metric-caption">Across all courses</span>
+            <div class="hero-metrics">
+                <div class="hero-metric">
+                    <span class="metric-label">Courses recommended</span>
+                    <span class="metric-value">{total_courses}</span>
+                    <span class="metric-caption">Personalised for you</span>
+                </div>
+                <div class="hero-metric">
+                    <span class="metric-label">Estimated effort</span>
+                    <span class="metric-value">{_format_hours(total_hours)}</span>
+                    <span class="metric-caption">Across all courses</span>
+                </div>
+                <div class="hero-metric">
+                    <span class="metric-label">Average match</span>
+                    <span class="metric-value">{avg_match:.0f}%</span>
+                    <span class="metric-caption">Alignment to your target role</span>
+                </div>
             </div>
-            <div class="hero-metric">
-                <span class="metric-label">Average match</span>
-                <span class="metric-value">{avg_match:.0f}%</span>
-                <span class="metric-caption">Alignment to your target role</span>
-            </div>
-        </div>
-    </section>
-    """
+        </section>
+        """
+    ).strip()
 
     st.markdown(hero_html, unsafe_allow_html=True)
 
@@ -607,51 +609,53 @@ def show_course_cards(recs_df: pd.DataFrame) -> None:
         )
 
         cards.append(
-            f"""
-            <article class="learning-card">
-                <div class="learning-card-header">
-                    <div class="learning-card-title">
-                        <span class="card-eyebrow">Path module {index}</span>
-                        <h3>{course.get('course_name', 'Untitled course')}</h3>
-                        <p class="card-meta">{escape(provider)} • {escape(str(difficulty))}</p>
-                    </div>
-                    <div class="learning-card-progress">
-                        <span class="progress-label">Match alignment</span>
-                        <div class="progress-track">
-                            <div class="progress-fill" style="width: {min(max(score, 0.0), 100.0):.0f}%"></div>
+            dedent(
+                f"""
+                <article class="learning-card">
+                    <div class="learning-card-header">
+                        <div class="learning-card-title">
+                            <span class="card-eyebrow">Path module {index}</span>
+                            <h3>{course.get('course_name', 'Untitled course')}</h3>
+                            <p class="card-meta">{escape(provider)} • {escape(str(difficulty))}</p>
                         </div>
-                        <span class="progress-value">{score:.0f}%</span>
+                        <div class="learning-card-progress">
+                            <span class="progress-label">Match alignment</span>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: {min(max(score, 0.0), 100.0):.0f}%"></div>
+                            </div>
+                            <span class="progress-value">{score:.0f}%</span>
+                        </div>
                     </div>
-                </div>
-                <p class="learning-card-description">{escape(summary_copy)}</p>
-                <div class="learning-card-grid">
-                    <div class="grid-item">
-                        <span class="grid-label">Duration</span>
-                        <span class="grid-value">{_format_hours(duration_val)}</span>
+                    <p class="learning-card-description">{escape(summary_copy)}</p>
+                    <div class="learning-card-grid">
+                        <div class="grid-item">
+                            <span class="grid-label">Duration</span>
+                            <span class="grid-value">{_format_hours(duration_val)}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Difficulty</span>
+                            <span class="grid-value">{escape(str(difficulty))}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Provider</span>
+                            <span class="grid-value">{escape(provider)}</span>
+                        </div>
+                        <div class="grid-item">
+                            <span class="grid-label">Rating</span>
+                            <span class="grid-value">{_format_rating(rating_val)}</span>
+                        </div>
                     </div>
-                    <div class="grid-item">
-                        <span class="grid-label">Difficulty</span>
-                        <span class="grid-value">{escape(str(difficulty))}</span>
+                    <div class="learning-card-skills">
+                        <span class="grid-label">Skills you'll build</span>
+                        <div class="tag-list">{taught or '<span class="pill muted">Skill data unavailable</span>'}</div>
                     </div>
-                    <div class="grid-item">
-                        <span class="grid-label">Provider</span>
-                        <span class="grid-value">{escape(provider)}</span>
+                    <div class="learning-card-actions">
+                        <button type="button" class="ghost-button">Add to planner</button>
+                        <button type="button" class="primary-button">Continue</button>
                     </div>
-                    <div class="grid-item">
-                        <span class="grid-label">Rating</span>
-                        <span class="grid-value">{_format_rating(rating_val)}</span>
-                    </div>
-                </div>
-                <div class="learning-card-skills">
-                    <span class="grid-label">Skills you'll build</span>
-                    <div class="tag-list">{taught or '<span class="pill muted">Skill data unavailable</span>'}</div>
-                </div>
-                <div class="learning-card-actions">
-                    <button type="button" class="ghost-button">Add to planner</button>
-                    <button type="button" class="primary-button">Continue</button>
-                </div>
-            </article>
-            """
+                </article>
+                """
+            ).strip()
         )
 
     st.markdown(
