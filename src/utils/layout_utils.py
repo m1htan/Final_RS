@@ -41,7 +41,16 @@ _JOB_LINK_LISTENER_SNIPPET = """
     }
     window.__jobLinkListenerAttached = true;
 
-    const parentDocument = window.parent.document;
+    function markComponentReady() {
+        if (window.Streamlit && window.Streamlit.setComponentReady) {
+            window.Streamlit.setComponentReady();
+            if (window.Streamlit.setFrameHeight) {
+                window.Streamlit.setFrameHeight(0);
+            }
+        } else {
+            window.setTimeout(markComponentReady, 40);
+        }
+    }
 
     function dispatchSelection(jobId) {
         function trySend() {
@@ -55,21 +64,39 @@ _JOB_LINK_LISTENER_SNIPPET = """
         trySend();
     }
 
+    const parentDocument = window.parent.document;
+
     parentDocument.addEventListener(
         "click",
         function (event) {
-            const target = event.target.closest(".job-card-link");
-            if (!target) {
+            let node = event.target;
+            if (!node) {
                 return;
             }
+
+            if (window.Node && node.nodeType === window.Node.TEXT_NODE) {
+                node = node.parentElement;
+            }
+
+            if (!node) {
+                return;
+            }
+
+            const anchor = node.closest ? node.closest(".job-card-link") : null;
+            if (!anchor) {
+                return;
+            }
+
             event.preventDefault();
-            const jobId = target.getAttribute("data-job-id");
+            const jobId = anchor.getAttribute("data-job-id");
             if (jobId) {
                 dispatchSelection(jobId);
             }
         },
         true
     );
+
+    markComponentReady();
 })();
 </script>
 """
@@ -390,7 +417,12 @@ def show_job_cards(jobs_df: pd.DataFrame) -> Optional[str]:
 
         st.markdown(card_html, unsafe_allow_html=True)
 
-    selection = components.html(_JOB_LINK_LISTENER_SNIPPET, height=0)
+    selection = components.html(
+        _JOB_LINK_LISTENER_SNIPPET,
+        height=0,
+        width=0,
+        key="job_link_listener",
+    )
     if selection:
         if isinstance(selection, str) and "::" in selection:
             selected_id = selection.split("::", 1)[0]
