@@ -3,7 +3,7 @@ import re
 from html import escape
 from pathlib import Path
 from collections import Counter
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from textwrap import dedent
 
 import pandas as pd
@@ -13,6 +13,44 @@ import streamlit.components.v1 as components
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "images"
+
+_FALLBACK_HOME_MODULES: List[Dict[str, Any]] = [
+    {
+        "title": "Advanced Analytics Platform",
+        "provider": "SkillGraph Academy",
+        "duration": 24.0,
+        "score": 86.0,
+        "visibility": 100.0,
+    },
+    {
+        "title": "Assessed Talent Patterns",
+        "provider": "SkillGraph Academy",
+        "duration": 18.0,
+        "score": 74.0,
+        "visibility": 92.0,
+    },
+    {
+        "title": "TopTalent Insights",
+        "provider": "SkillGraph Academy",
+        "duration": 20.0,
+        "score": 68.0,
+        "visibility": 88.0,
+    },
+    {
+        "title": "System Integrations Fundamentals",
+        "provider": "SkillGraph Academy",
+        "duration": 22.0,
+        "score": 64.0,
+        "visibility": 84.0,
+    },
+    {
+        "title": "Capacity Planning Essentials",
+        "provider": "SkillGraph Academy",
+        "duration": 16.0,
+        "score": 59.0,
+        "visibility": 80.0,
+    },
+]
 
 _JOB_LINK_COMPONENT_DIR = (
     Path(__file__).resolve().parents[1]
@@ -511,6 +549,174 @@ def _format_rating(value: Optional[float]) -> str:
     if value is None:
         return "—"
     return f"{value:.1f} / 5"
+
+
+def _coerce_float(value: Any) -> Optional[float]:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _estimate_span(hours: Optional[float]) -> int:
+    if hours is None or hours <= 0:
+        return 2
+    weeks = hours / 8.0
+    span = int(round(weeks))
+    return max(2, min(span, 6))
+
+
+def _prepare_home_modules(recs_df: Optional[pd.DataFrame]) -> List[Dict[str, Any]]:
+    modules: List[Dict[str, Any]] = []
+    if recs_df is not None and not recs_df.empty:
+        for index, record in enumerate(recs_df.to_dict(orient="records"), start=1):
+            duration = _coerce_float(record.get("duration_hours"))
+            raw_score = _coerce_float(record.get("score"))
+            if raw_score is None:
+                score_pct = 0.0
+            elif raw_score > 1.0:
+                score_pct = max(0.0, min(raw_score, 100.0))
+            else:
+                score_pct = max(0.0, min(raw_score * 100.0, 100.0))
+
+            visibility = max(60.0, score_pct + 10.0 + index * 4.0)
+            modules.append(
+                {
+                    "title": record.get("course_name")
+                    or record.get("course_title")
+                    or f"Learning module {index}",
+                    "provider": record.get("provider") or "—",
+                    "duration": duration,
+                    "score": score_pct,
+                    "visibility": min(100.0, visibility),
+                }
+            )
+
+    if not modules:
+        modules = [module.copy() for module in _FALLBACK_HOME_MODULES]
+
+    return modules[:6]
+
+
+def show_home_dashboard(user_id: str, recs_df: Optional[pd.DataFrame]) -> None:
+    modules = _prepare_home_modules(recs_df)
+    months = ["September", "October", "November", "December"]
+
+    month_header = "".join(
+        dedent(
+            f"""
+            <div class="timeline-month" style="grid-column: {idx * 4 + 1} / span 4;">
+                <span class="month-name">{month}</span>
+                <div class="month-weeks"><span>W1</span><span>W2</span><span>W3</span><span>W4</span></div>
+            </div>
+            """
+        ).strip()
+        for idx, month in enumerate(months)
+    )
+
+    timeline_rows: List[str] = []
+    start_column = 1
+    for idx, module in enumerate(modules, start=1):
+        span = _estimate_span(_coerce_float(module.get("duration")))
+        if start_column + span > 17:
+            start_column = 1
+        title = escape(str(module.get("title", f"Module {idx}")))
+        provider = escape(str(module.get("provider", "—")))
+        duration_display = _format_hours(_coerce_float(module.get("duration")))
+        timeline_rows.append(
+            dedent(
+                f"""
+                <div class="timeline-row">
+                    <div class="timeline-label">
+                        <span class="timeline-eyebrow">Path module {idx}</span>
+                        <span class="timeline-title">{title}</span>
+                        <span class="timeline-provider">{provider} • {duration_display}</span>
+                    </div>
+                    <div class="timeline-track">
+                        <div class="timeline-bar" style="grid-column: {start_column} / span {span};">
+                            <span>{title}</span>
+                        </div>
+                    </div>
+                </div>
+                """
+            ).strip()
+        )
+        start_column += span
+
+    progress_rows: List[str] = []
+    for idx, module in enumerate(modules, start=1):
+        score = _coerce_float(module.get("score")) or 0.0
+        visibility = _coerce_float(module.get("visibility")) or (score + 12.0)
+        score_display = max(0.0, min(score, 100.0))
+        visibility_display = int(round(max(0.0, min(visibility, 100.0))))
+        progress_rows.append(
+            dedent(
+                f"""
+                <div class="progress-row">
+                    <div class="progress-info">
+                        <span class="progress-name">{escape(str(module.get('title', f'Module {idx}')))}</span>
+                        <span class="progress-provider">{escape(str(module.get('provider', '—')))}</span>
+                    </div>
+                    <div class="progress-meter">
+                        <div class="progress-fill" style="width: {score_display:.0f}%;"></div>
+                    </div>
+                    <div class="progress-value">{score_display:.0f}%</div>
+                    <div class="progress-visibility">{visibility_display}% visibility</div>
+                </div>
+                """
+            ).strip()
+        )
+
+    dashboard_html = dedent(
+        f"""
+        <section class="home-dashboard">
+            <header class="home-header">
+                <div class="home-header-copy">
+                    <h2>Growth planner</h2>
+                    <p>Visualise your personalised learning path after logging in.</p>
+                </div>
+                <div class="home-header-search">
+                    <span class="search-icon"></span>
+                    <input type="text" placeholder="Search planner" />
+                </div>
+                <div class="home-header-chip">
+                    <span class="chip-label">User</span>
+                    <span class="chip-value">{escape(user_id)}</span>
+                </div>
+            </header>
+            <div class="home-grid">
+                <article class="timeline-card card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Timeline view</h3>
+                            <p class="card-subtitle">Track how each recommended module stacks across the upcoming months.</p>
+                        </div>
+                        <div class="timeline-legend">
+                            <span class="legend-pill">In progress</span>
+                            <span class="legend-pill upcoming">Upcoming</span>
+                        </div>
+                    </div>
+                    <div class="timeline-month-header">{month_header}</div>
+                    <div class="timeline-list">{''.join(timeline_rows)}</div>
+                </article>
+                <article class="progress-card card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Progress tracking</h3>
+                            <p class="card-subtitle">Monitor completion velocity and visibility across your modules.</p>
+                        </div>
+                        <button type="button" class="ghost-button small">View details</button>
+                    </div>
+                    <div class="progress-list">{''.join(progress_rows)}</div>
+                </article>
+            </div>
+        </section>
+        """
+    ).strip()
+
+    st.markdown(dashboard_html, unsafe_allow_html=True)
 
 
 def show_course_cards(recs_df: pd.DataFrame) -> None:
